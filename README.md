@@ -34,9 +34,9 @@ For example, to run the classic blinking Q light program, enter this:
 
     python Run_1802.py h=7A7B3000
 
-The Run_1802 program will read that input into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, and then begin clocking the 1802's CLK pin at a relatively constant (but currently very slow) rate. As the 1802 fetches each instruction, the Run_1802 program will decode the address lines, look up the current value of RAM at that location, and serve up the proper byte to the shared data bus. The 1802 processor will literally be running that program. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
+The Run_1802 program will read that input into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, clock the 1802's CLK pin 16 cycles while in reset, and then continue clocking the 1802 at a relatively constant (but currently very slow) rate for a designated number of cycles. As the 1802 attempts to fetch each instruction, the Run_1802 program will decode the address lines, look up the current value of RAM at that location, and serve up the proper byte to the shared data bus. The 1802 processor will be running the program as it is being "spoon fed" by the Pi. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
 
-While typing in a hex program on the command line can be very handy, it's much more common to have a program file available. The file is specified with the f=filename option. The format of the file is a simple stream of 2 digit hex characters per byte of 1802 memory. Spaces and carriage returns are ignored, and semicolons begin comments. So the following file should be recognized:
+While entering a small hex program on the command line can be very handy, it's much more common to have a program file available. The file is specified with the f=filename option. The format of the file is a simple stream of 2 digit hex characters per byte of 1802 memory. Spaces and carriage returns are ignored, and semicolons begin comments on each line. So the following file should be recognized:
 
     ; Blink and repeat
     
