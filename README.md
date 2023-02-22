@@ -210,4 +210,4 @@ As shown in that last code snippet, Run_1802 currently expects the following 180
     d0     connected to GPIO 15
     qout   connected to GPIO 14
 
-Proper engineering practices for the configuration and connecting of hardware is beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware.
+Note that proper engineering practices for the configuration and connecting of hardware are beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware.
