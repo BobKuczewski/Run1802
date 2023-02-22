@@ -8,11 +8,11 @@ The standard configuration has the Raspberry Pi's GPIO pins connected to various
 
 ## Hardware Needed
 
-This software should run on any modern Raspberry Pi computer containing the standard configuration of 40 pins supporting GPIO communications. This program was developed for a Raspberry Pi Zero, but should also work with the Raspberry Pi 3, 3A+, 3B, 3B+, and 4B. Of course, you'll also need an 1802 processor, a power supply, and a means to properly connect them all together (breadboard, wire wrap board, printed circuit board, etc).
+This software should run on any modern Raspberry Pi computer containing the standard configuration of 40 pins supporting GPIO communications. This program was developed for a Raspberry Pi Zero, but should also work with the Raspberry Pi 3, 3A+, 3B, 3B+, and 4B. Of course, you'll also need an 1802 processor, a power supply, and a means to properly connect them all together (breadboard, wire wrap board, printed circuit board, etc). The software only relies on the libraries that come pre-installed with the Raspberry Pi operating system.
 
 ## Use
 
-This project can be used for a number of purposes. The most obvious use is to learn programming on an actual 1802. Another use would be to test 1802 processors in a controlled environment. The project might also be a useful aid in designing 1802 systems where some portions of the system are real hardware while others are being simulated until their design is finalized. This software is open source, so you may adapt it as needed.
+This project can be used for a number of purposes. The most obvious use is to learn machine level programming on an actual 1802 within the convenient environment of a Raspberry Pi computer. Another use would be to test 1802 processors in a controlled environment (see "Testing" section below). The project might also be a useful aid in designing 1802 systems where some portions of the system are real hardware while others are being simulated until their design is finalized. This software is open source, so you may adapt it as needed.
 
 ## Running
 
