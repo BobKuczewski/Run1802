@@ -29,6 +29,7 @@ Where "options" are:
     js      to save output in specialized data.js file
     dm      to dump non-zero memory after the run
     p       to drop into Python after running
+    help    to print out helpful information and exit
 
 For example, to run the classic blinking Q light program, enter this:
 
@@ -211,3 +212,64 @@ As shown in that last code snippet, Run_1802 currently expects the following 180
     qout   connected to GPIO 14
 
 Note that proper engineering practices for the configuration and connecting of hardware are beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware.
+
+## Python Power
+
+Using the "p" command line option will start the Python command line interpreter (or Python console) after the program has run the requested number of clock ticks. At that point you will be presented with the standard Python ">>>" prompt. If you are familiar with Python, you can use all of the normal commands to examine data, change data, call functions, and even write and call new temporary functions in that session. In short, you can do pretty much anything.
+
+To support more advanced control and debugging, Run_1802.py includes a number of functions designed to be helpful in the Python console. These functions are:
+
+    h() to show this help text
+    reset() to reset the 1802
+    run(n) run the 1802 by n half-clocks
+    mem() to show first 16 bytes plus all non-zero bytes
+    ram(start[,num[,any]]) to show selected memory
+    find(val,start,num,inv) to find values in memory
+    half_clock() toggle the clock
+    full_clock() cycle the clock
+    not_clear_low() to bring /clear pin low
+    not_clear_high() to bring /clear pin high
+
+For example, to reset the 1802, call the reset() function (don't type the ">>>" prompt ... it should already be there):
+
+    >>> reset()
+
+To run the 1802 for 16 half-clock cycles (8 full clock cycles) enter:
+
+    >>> run(16)
+
+Most of these are self-explanatory, but the last 4 (half_clock, full_clock, non_clear_low, and not_clear_high) may not be so obvious.
+
+The "half_clock" and "full_clock" functions simply toggle or cycle the clock line to the 1802. They do not provide any of the other supporting functionality provided by the "run" function. In other words, all of the other GPIO pins will remain as they were last set by the "run" command. There may be reasons to do this, but be very careful.
+
+Similarly, the "not_clear_low" and "not_clear_high" functions simply set the value of the 1802's clear pin. They are not the same as the "reset" function which also resets the clock to 0. So again, there may be reasons to do this, but be very careful.
+
+To get a feel for using these functions, run the simple blink program (7B first), but add the "n=0" and "p" options:
+
+    $ python Run_1802.py h=7B7A3000 n=0 p
+
+This will load the program, run 0 clock cycles, and drop into the Python console. At that point, you can run 40 "half-clock" steps with this function call:
+
+    >>> run(40)
+
+After 40 half-clocks, the Q output should still be off. Then run one more half-clock with this function call:
+
+    >>> run(1)
+
+The Q output should then go high.
+
+You can also explore and modify the 1802 RAM using normal Python syntax. The "RAM" in Run_1802 is stored internally as a Python list, so you can display the first 10 bytes with this command:
+
+    >>> memory[0:10]
+
+You could also display the 32 bytes starting at address 256 using hex syntax:
+
+    >>> memory[0x100:0x120]
+
+You can assign a value to any address as well. These commands, for example, swap the first two bytes of memory:
+
+    >>> temp = memory[0]
+    >>> memory[0] = memory[1]
+    >>> memory[1] = temp
+
+The ability to use Python gives great power and control. But remember that with great power comes great responsbility. Use the power of Python carefully!
