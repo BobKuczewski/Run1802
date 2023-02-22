@@ -277,7 +277,7 @@ if len(sys.argv) > 1:
       dparts = d.split("\n")
       for i in range(len(dparts)):
         if ';' in dparts[i]:
-	  dparts[i] = dparts[i].split(';')[0]
+          dparts[i] = dparts[i].split(';')[0]
       d = " ".join(dparts)
       # Remove all the white space
       d = d.strip()
