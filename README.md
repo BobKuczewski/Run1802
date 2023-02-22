@@ -4,7 +4,7 @@
 
 This project contains the software needed to run an RCA 1802 processor under direct control of a Raspberry Pi computer.
 
-The standard configuration has the Raspberry Pi's GPIO pins connected to various 1802 processor pins - especially the 1802's clock pin. This allows the Raspberry Pi to clock the 1802 and interact with the 1802 on a clock by clock basis. In some configurations, the Raspberry Pi might just observe and optionally store the 1802's pin values. In other configurations, the Raspberry Pi might control the entire environment of the 1802 (memory, I/O, interrupts, etc). There could also be configurations where the Raspberry Pi controls some portions of the interface but not all.
+The standard configuration has the Raspberry Pi's GPIO pins connected to various 1802 processor pins - especially the 1802's clock pin. This allows the Raspberry Pi to clock the 1802 and interact with the 1802 on a clock by clock basis. In some configurations, the Raspberry Pi might just observe and optionally store the 1802's pin values. In other configurations, the Raspberry Pi might control the entire environment of the 1802 (memory, I/O, interrupts, etc). There could also be configurations where the Raspberry Pi controls some portions of the 1802 environment but not all.
 
 ## Hardware Needed
 
@@ -24,9 +24,9 @@ Where "options" are:
     f=file  to run a file (in plain hex format)
     n=#     to specify number of clocks to run
     d       to dump every pin while running
+    js      to save output in data.js
     dm      to dump non-zero memory after run
     p       to drop into Python after running
-    js      to save output in data.js
 
 For example, to run the classic blinking Q light program, enter this:
 
@@ -70,3 +70,8 @@ Here's another example that produces the first few numbers of the Fibonacci sequ
 
 As shown in the Fibonacci example, the Run_1802 program directly supports the "64" (OUT 4) instruction. When the 1802 writes a byte to port 4 with "64", the Run_1802 program prints that value (currently in decimal) to the terminal screen where the program was run. The current version will print whenever the N2 bit set (4,5,6,7), but future versions may use different ports for different purposes.
 
+When run without specifying the number of clock ticks, the current version will execute one million clock edges before stopping. This can be changed by specifying the number of clock edges with the "n=#" command line parameter. The program can also be stopped gracefully with Control-C at any time.
+
+In addition to just running the target program, Run_1802 can also save the state of most of the 1802's pin values as it runs. These outputs are specified with the "d" and "js" options. The "d" option stands for "debug" or "data", and it will cause Run_1802 to print both a header and a space-separated row of 0's and 1's to the terminal as it runs. The header will be printed once, but a row of data will be printed for each clock value. So the CLK output will always alternate between 0 and 1. All of the other values should reflect each pin's state while the clock was either high or low. This output will normally scroll to the screen, but it can also be redirected to a file or other process through your operating system or shell mechanisms. The "js" option is a bit more specialized. It produces a Javascript file containing both the header and the data to be automatically copied into the HTML elements named "timing_header_area" and "timing_data_area". This allows them to be processed by a Javascript program for visualization and analysis.
+
+The final two options are "dm" and "p". The "dm" option causes Run_1802 to "display memory" after the run has completed. It will always show the first 16 bytes of memory followed by any other bytes that were non-zero after the run. This is helpful since Run_1802 starts with all memory set to 0, so any non-zero values at any location can be seen with the "dm" option. The "p" option causes Run_1802 to drop into a Python shell after the run has completed. This supports interactive exploration of the results as well as direct interaction with the 1802.
