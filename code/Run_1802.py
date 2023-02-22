@@ -230,21 +230,38 @@ dump_file = None
 num_clocks = 1000000
 open_console = False
 
+def h():
+  print ( "Command Line Parameters:" )
+  print ( "  h=hex  to run raw hex code from command" )
+  print ( "  f=file to run a file (in plain hex format)" )
+  print ( "  n=#    to specify number of clocks to run" )
+  print ( "  js     to save output in data.js" )
+  print ( "  d      to dump every pin while running" )
+  print ( "  dm     to dump non-zero memory after run" )
+  print ( "  p      to drop into Python after running" )
+  print ( "  help   to print this help message and exit" )
+  print ( "Useful functions from Python:" )
+  print ( "  h() to show this help text" )
+  print ( "  reset() to reset the 1802" )
+  print ( "  run(n) run the 1802 one by n half-clocks" )
+  print ( "  mem() to show first 16 plus all non-zero" )
+  print ( "  ram(start[,num[,any]]) to show selected memory" )
+  print ( "  find(val,start,num,inv) to find values in memory" )
+  print ( "  half_clock() toggle the clock" )
+  print ( "  full_clock() cycle the clock" )
+  print ( "  not_clear_low() to bring /clear pin low" )
+  print ( "  not_clear_high() to bring /clear pin high" )
+  print ( "  help() to get Python help" )
+  print ( "Use up and down arrows in Python for history" )
+  print ( "Use Control-C to exit at any time" )
+
 if len(sys.argv) > 1:
   # print ( "Arguments: " + str(sys.argv) )
   for arg in sys.argv:
     # print ("  " + str(arg))
 
     if arg == "help":
-      print ( "Command Line Parameters:" );
-      print ( "  h=hex  to run raw hex code from command" );
-      print ( "  f=file to run a file (in plain hex format)" );
-      print ( "  n=#    to specify number of clocks to run" );
-      print ( "  js     to save output in data.js" );
-      print ( "  d      to dump every pin while running" );
-      print ( "  dm     to dump non-zero memory after run" );
-      print ( "  p      to drop into Python after running" );
-      print ( "Use Control-C to exit at any time" );
+      h()
       sys.exit ( 0 )
 
     if arg == "d":
@@ -391,6 +408,181 @@ def print_data(ncl):
     dump_file.write ( " + \"" + s + "\\n\"\n" );
   print ( s )
 
+addr_hi = 0
+n2_hi = 0
+out4_val = None
+
+def half_clock(n):
+  global clock
+  for i in range(n):
+    clock.toggle()
+
+def full_clock(n):
+  global clock
+  for i in range(n):
+    clock.toggle()
+    time.sleep ( settling_sleep_time )
+    clock.toggle()
+    time.sleep ( settling_sleep_time )
+
+def not_clear_low():
+  global nclear
+  nclear.set_val ( False )
+  time.sleep ( 0.01 )
+
+def not_clear_high():
+  global nclear
+  nclear.set_val ( True )
+  time.sleep ( 0.01 )
+
+def reset():
+  global nclear
+  global clock
+
+  # Assert the "Reset" line and pause
+  nclear.set_val ( False )
+  time.sleep ( 0.01 )
+
+  # Run the clock while in reset
+  full_clock(32)
+
+  # Ensure that the clock starts off
+  clock.set_val ( False )
+
+  # Release the "Reset" line to let the 1802 start running
+  nclear.set_val ( True )
+  time.sleep ( 0.01 )
+
+def run ( num_clocks ):
+  # Run the 1802 by num_clocks clock edges
+  global addr_hi
+  global n2_hi
+  global out4_val
+
+  for i in range(num_clocks):
+    clock.toggle()
+    time.sleep ( settling_sleep_time )
+
+    # Get the current address lines from the 1802
+    a0 = ma0.get_val()
+    a1 = ma1.get_val()
+    a2 = ma2.get_val()
+    a3 = ma3.get_val()
+    a4 = ma4.get_val()
+    a5 = ma5.get_val()
+    a6 = ma6.get_val()
+    a7 = ma7.get_val()
+    addr = (a7 << 7) | (a6 << 6) | (a5 << 5) | (a4 << 4) | (a3 << 3) | (a2 << 2) | (a1 << 1) | a0
+
+    if tpa.get_val():
+      # Keep saving the high address inside the TPA active region.
+      addr_hi = addr + 0
+
+    if n2.get_val():
+      # Preserve the fact that n2 was high
+      n2_hi = 1
+      # Also preserve the last sample while high
+      db7 = d7.get_val()
+      db6 = d6.get_val()
+      db5 = d5.get_val()
+      db4 = d4.get_val()
+      db3 = d3.get_val()
+      db2 = d2.get_val()
+      db1 = d1.get_val()
+      db0 = d0.get_val()
+      out4_val = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+    else:
+      if n2_hi != 0:
+        # n2 had been high, but just went low, so output
+        print ( str(out4_val) )
+        # Reset  n2_hi and out4_val
+        n2_hi = 0
+        out4_val = None
+
+
+    # Get /MRD and /MRW for later use
+    n_mrd = nmrd.get_val()
+    n_mwr = nmwr.get_val()
+
+    if n_mrd:
+        # Not Memory Read is high, so the 1802 isn't reading (and may be writing)
+        # Convert the Raspberry Pi data lines to read mode with a call to get_val()
+        db7 = d7.get_val()
+        db6 = d6.get_val()
+        db5 = d5.get_val()
+        db4 = d4.get_val()
+        db3 = d3.get_val()
+        db2 = d2.get_val()
+        db1 = d1.get_val()
+        db0 = d0.get_val()
+
+        if not n_mwr:
+          # The 1802 wants to write to memory, so convert the data and write it to memory
+          data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+          memory[(addr_hi<<8) | addr] = data_byte
+          # print ( "Setting mem[" + str((addr_hi<<8)|addr) + "] to " + str(data_byte) )
+
+    else:
+        # The 1802 wants to read from memory (instruction or data)
+        # Present the requested byte to the data bus
+        mem_out = memory[(addr_hi<<8) | addr]
+
+        # Put the instruction onto the data bus
+        d7.set_val ( (mem_out>>7) & 0x01 )
+        d6.set_val ( (mem_out>>6) & 0x01 )
+        d5.set_val ( (mem_out>>5) & 0x01 )
+        d4.set_val ( (mem_out>>4) & 0x01 )
+        d3.set_val ( (mem_out>>3) & 0x01 )
+        d2.set_val ( (mem_out>>2) & 0x01 )
+        d1.set_val ( (mem_out>>1) & 0x01 )
+        d0.set_val ( (mem_out>>0) & 0x01 )
+
+    if dump_data:
+      print_data ( "1" ) # notCLEAR is 0
+    if dump_file != None:
+      dump_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
+
+    time.sleep ( settling_sleep_time )
+
+def find (val=0, start=0, num=0x1000, inv=False):
+  # Find val in RAM
+  global memory
+  print ( "-------------------" )
+  print ( "RAM:" )
+  print ( "-------------------" )
+  for i in range(num):
+    addr = start + i
+    if ((not inv) and (memory[addr] == val)) or (inv and (memory[addr] != val)):
+      print ( "M[" + hex(addr) + "] = " + hex(memory[addr]) + " = " + str(memory[addr]) )
+  print ( "-------------------" )
+
+def ram (start=0, num=16, any_val=True):
+  # Show RAM
+  global memory
+  print ( "-------------------" )
+  print ( "RAM:" )
+  print ( "-------------------" )
+  for i in range(num):
+    addr = start + i
+    if any_val or (memory[addr] != 0):
+      print ( "M[" + hex(addr) + "] = " + hex(memory[addr]) + " = " + str(memory[addr]) )
+  print ( "-------------------" )
+
+def mem ():
+  # Show the first 16 bytes of RAM followed by a scan for non-zero values
+  global memory
+  print ( "-------------------" )
+  print ( "RAM:" )
+  print ( "-------------------" )
+  for addr in range(16):
+    print ( "M[" + hex(addr) + "] = " + hex(memory[addr]) + " = " + str(memory[addr]) )
+  print ( "-------------------" )
+  for i in range(16,0x10000):
+    if memory[i] != 0:
+      print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
+  print ( "-------------------" )
+
+
 # Print the header as appropriate for this run
 if dump_data or ( dump_file != None ):
   if dump_data:
@@ -412,111 +604,13 @@ for i in range(32):
 nclear.set_val ( True )
 time.sleep ( 0.1 )
 
-addr_hi = 0
-n2_hi = 0
-out4_val = None
-
 # Enter a loop to toggle the clock to run the program
 print ( "Running " + str(num_clocks) + " clocks" )
-for i in range(num_clocks):
-  clock.toggle()
-  time.sleep ( settling_sleep_time )
+run ( num_clocks )
 
-  # Get the current address lines from the 1802
-  a0 = ma0.get_val()
-  a1 = ma1.get_val()
-  a2 = ma2.get_val()
-  a3 = ma3.get_val()
-  a4 = ma4.get_val()
-  a5 = ma5.get_val()
-  a6 = ma6.get_val()
-  a7 = ma7.get_val()
-  addr = (a7 << 7) | (a6 << 6) | (a5 << 5) | (a4 << 4) | (a3 << 3) | (a2 << 2) | (a1 << 1) | a0
-
-  if tpa.get_val():
-    # Keep saving the high address inside the TPA active region.
-    addr_hi = addr + 0
-
-  if n2.get_val():
-    # Preserve the fact that n2 was high
-    n2_hi = 1
-    # Also preserve the last sample while high
-    db7 = d7.get_val()
-    db6 = d6.get_val()
-    db5 = d5.get_val()
-    db4 = d4.get_val()
-    db3 = d3.get_val()
-    db2 = d2.get_val()
-    db1 = d1.get_val()
-    db0 = d0.get_val()
-    out4_val = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
-  else:
-    if n2_hi != 0:
-      # n2 had been high, but just went low, so output
-      print ( str(out4_val) )
-      # Reset  n2_hi and out4_val
-      n2_hi = 0
-      out4_val = None
-
-
-  # Get /MRD and /MRW for later use
-  n_mrd = nmrd.get_val()
-  n_mwr = nmwr.get_val()
-
-  if n_mrd:
-      # Not Memory Read is high, so the 1802 isn't reading (and may be writing)
-      # Convert the Raspberry Pi data lines to read mode with a call to get_val()
-      db7 = d7.get_val()
-      db6 = d6.get_val()
-      db5 = d5.get_val()
-      db4 = d4.get_val()
-      db3 = d3.get_val()
-      db2 = d2.get_val()
-      db1 = d1.get_val()
-      db0 = d0.get_val()
-
-      if not n_mwr:
-        # The 1802 wants to write to memory, so convert the data and write it to memory
-        data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
-        memory[(addr_hi<<8) | addr] = data_byte
-        # print ( "Setting mem[" + str((addr_hi<<8)|addr) + "] to " + str(data_byte) )
-
-  else:
-      # The 1802 wants to read from memory (instruction or data)
-      # Present the requested byte to the data bus
-      mem_out = memory[(addr_hi<<8) | addr]
-
-      # Put the instruction onto the data bus
-      d7.set_val ( (mem_out>>7) & 0x01 )
-      d6.set_val ( (mem_out>>6) & 0x01 )
-      d5.set_val ( (mem_out>>5) & 0x01 )
-      d4.set_val ( (mem_out>>4) & 0x01 )
-      d3.set_val ( (mem_out>>3) & 0x01 )
-      d2.set_val ( (mem_out>>2) & 0x01 )
-      d1.set_val ( (mem_out>>1) & 0x01 )
-      d0.set_val ( (mem_out>>0) & 0x01 )
-
-  if dump_data:
-    print_data ( "1" ) # notCLEAR is 0
-  if dump_file != None:
-    dump_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
-
-  time.sleep ( settling_sleep_time )
 
 if dump_mem:
-  # Show the RAM after the run (including a scan for non-zero values)
-  print ( "---------------" )
-  print ( "RAM:" )
-  print ( "---------------" )
-  for i in range(16):
-    print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
-
-  print ( "---------------" )
-  for i in range(16,0x10000):
-    if memory[i] != 0:
-      print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
-
-  print ( "---------------" )
+  mem()
 
 if open_console:
   # Allow exploration of the post-run RAM
