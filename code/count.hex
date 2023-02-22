@@ -1,0 +1,12 @@
+f8 0f ; LDI 0F
+af    ; PLO F
+f8 00 ; LDI 00
+bf    ; PHI F
+ae    ; PLO E
+ef    ; SEX F
+1e    ; INC E
+8e    ; GLO E
+5f    ; STR F
+64    ; OUT 4
+2f    ; DEC F
+30 08 ; BR 08

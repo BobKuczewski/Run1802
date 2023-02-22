@@ -1,0 +1,5 @@
+; Blink and repeat
+
+7a     ; REQ Turn on the Q output
+7b     ; SEQ Turn on the Q output
+30 00  ; BR 00 Branch back and repeat

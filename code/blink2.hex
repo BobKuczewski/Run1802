@@ -1,0 +1,17 @@
+; Blink twice, pause and repeat
+
+7b     ; SEQ Turn on the Q output (often an LED)
+c4     ; NOP No operation for timing
+7a     ; REQ Turn off the Q output
+c4     ; NOP Pause for timing
+7b     ; SEQ Turn on the Q output a second time
+c4     ; NOP Pause for timing
+7a     ; REQ Turn off the Q output
+c4     ; NOP Pause for timing
+c4     ; :
+c4     ; :
+c4     ; :
+c4     ; :
+c4     ; :
+c4     ; :
+30 00  ; BR 00 Branch back and repeat
