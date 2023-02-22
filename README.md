@@ -8,6 +8,8 @@ The standard configuration has the Raspberry Pi's GPIO pins connected to various
 
 ## Hardware Needed
 
+![1802 and Pi Zero](/docs/images/CDP1802_Raspberry_Pi_Zero.jpg?raw=true "1802 and Pi Zero")
+
 This software should run on any modern Raspberry Pi computer containing the standard configuration of 40 pins supporting GPIO communications. This program was developed for a Raspberry Pi Zero, but should also work with the Raspberry Pi 3, 3A+, 3B, 3B+, and 4B.
 
 ## Use
