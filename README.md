@@ -22,12 +22,12 @@ The main program is run from the command line in Python with:
 
 Where "options" are:
 
-    h=hex   to run raw hex code from the command line
-    f=file  to run a program file (in plain hex format)
-    n=#     to specify number of clocks to run
+    h=hex   to run plain hex code from the command line
+    f=file  to run a hex program of several possible formats
+    n=#     to specify number of half-clocks to run
     d       to dump every pin while running
-    js      to save output in specialized data.js file
     dm      to dump non-zero memory after the run
+    js      to save output in specialized data.js file
     p       to drop into Python after running
     help    to print out helpful information and exit
 
@@ -35,17 +35,27 @@ For example, to run the classic blinking Q light program, enter this:
 
     python Run_1802.py h=7A7B3000
 
-The Run_1802 program will read that input into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, clock the 1802's CLK pin 16 cycles while in reset, and then continue clocking the 1802 at a relatively constant (but currently very slow) rate for a designated number of cycles. As the 1802 attempts to fetch each instruction, the Run_1802 program will decode the address lines, look up the current value of RAM at that location, and serve up the proper byte to the shared data bus. The 1802 processor will be running the program as it is being "spoon fed" by the Pi. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
+The Run_1802 program will read that hex input (following "h=") into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, clock the 1802's CLK pin 16 cycles while in reset, and then continue clocking the 1802 at a relatively constant (but currently very slow) rate for a designated number of cycles. As the 1802 attempts to fetch each instruction, the Run_1802 program will decode the address lines, look up the current value of RAM at that location, and serve up the proper byte to the shared data bus. The 1802 processor will be running the program as it is being "spoon fed" by the Pi. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
 
-While entering a small hex program on the command line can be very handy, it's much more common to have a program file available. The file is specified with the f=filename option. The format of the file is a simple stream of 2 digit hex characters per byte of 1802 memory. Spaces and carriage returns are ignored, and semicolons begin comments on each line. So the following file should be recognized:
+## File Formats
+
+While entering a small hex program on the command line can be very handy, it's much more common to have a program file available. A program file can be specified with the f=filename option. Run_1802 supports 3 different file formats. The easist format is a simple stream of hex bytes (as in the last example of "7A7B3000"). This is known as "plain hex" format and files in this format are named ".phx". This is also the most practical format to enter on the command line. The second easiest format is "address hex" format with files named ".ahx". This is a superset of the plain hex format that allows an address field at the start of any line or on a line by itself. The address field must be terminated with a colon character (:) to distinguish it from data fields. Address fields are not required anywhere in an "address hex" file, but they can be added as needed to specify the starting points of segments of data and instructions. The most complex file format is "Intel Hex" format with files usually named ".hex". Intel Hex format is a widely adopted format and is [well documented on the web](https://en.wikipedia.org/wiki/Intel_HEX). Run_1802 can also read Intel Hex format files (but the checksum field is currently ignored).
+
+One of the advantages of the plain-hex and address-hex formats is that they both support comments following a semi-colon. This is extremely helpful for anyone coding in machine language. Of course, the biggest advantage of the Intel hex format is that it is generally produced by a real assembler and doesn't need comments because the comments are in the source code.
+
+This is an example of a simple plain hex file:
+
+    7a7b3000
+
+That same program could also be recognized by Run_1802 as follows (comments and white space are ignored):
 
     ; Blink and repeat
     
-    7a     ; REQ Turn on the Q output
+    7a     ; REQ Turn off the Q output
     7b     ; SEQ Turn on the Q output
     30 00  ; BR 00 Branch back and repeat
 
-Here's another example that produces the first few numbers of the Fibonacci sequence:
+Here's another "plain hex" example that produces the first few numbers of the Fibonacci sequence:
 
     F8 00 ; LDI 0
     BA    ; PHI A
@@ -71,11 +81,86 @@ Here's another example that produces the first few numbers of the Fibonacci sequ
     00    ; FIB 0 2 4 6 8 ...
     01    ; FIB 1 3 5 7 9 ...
 
-As shown in the Fibonacci example, the Run_1802 program directly supports the "64" (OUT 4) instruction. When the 1802 writes a byte to port 4 with "64", the Run_1802 program prints that value (currently in decimal) to the terminal screen where the program was run. The current version will print whenever the N2 bit is set (N=4,5,6,7), but future versions may use different ports for different purposes.
+While not required in that example, numeric addresses could be added to show branch targets and data fields
+
+          F8 00 ; LDI 0
+          BA    ; PHI A
+          BB    ; PHI B
+          BC    ; PHI C
+          F8 1A ; LDI 1A
+          AA    ; PLO A
+          F8 1B ; LDI 1B
+          AB    ; PLO B
+          F8 00 ; LDI 0
+          AC    ; PLO C
+    0E:   EA    ; SEX A
+          F4    ; ADD
+          5A    ; STR A
+          64    ; OUT 4
+          2A    ; DEC A
+          EB    ; SEX B
+          F4    ; ADD
+          5B    ; STR B
+          64    ; OUT 4
+          2B    ; DEC B
+          30 0E ; BR 0E
+    1A:   00    ; FIB 0 2 4 6 8 ...
+    1B:   01    ; FIB 1 3 5 7 9 ...
+
+Note that Run_1802 will place (force) the bytes at those explicitly defined address fields to be located at those addresses - even if they overwrite existing code or data. Each line is processed sequentially, and the data is placed in memory sequentially until an address is encountered. Then the sequential placement process continues from that new point forward.
+
+Of course, almost all serious work will require a real assembler (such as the [A18 assembler](http://www.retrotechnology.com/memship/a18.html) written by William C. Colley and maintained and improved by Herbert R. Johnson). The A18 assembler produces standardized "Intel Hex" format files. Here's the output of the A18 assembler processing a source code file for the previous Fibonacci examples:
+
+    :1C000000F800BABBBCF81AAAF81BABF800ACEAF45A642AEBF45B642B300E0001CF
+    :00001C01E3
+
+This is a very compact form and includes both address information and a checksum (currently ignored by Run_1802). The source code for that program came from the following file:
+
+    Ra          EQU    10
+    Rb          EQU    11
+    Rc          EQU    12
+
+    START       ORG    0H
+                LDI 0
+                PHI Ra
+                PHI Rb
+                PHI Rc
+                LDI 1AH
+                PLO Ra
+                LDI 1BH
+                PLO Rb
+                LDI 0
+                PLO Rc
+
+    LOOP        SEX Ra
+                ADD
+                STR Ra
+                OUT 4
+                DEC Ra
+                SEX Rb
+                ADD
+                STR Rb
+                OUT 4
+                DEC Rb
+                BR        LOOP
+                BYTE        0        ; FIB 0 2 4 6 8 ...
+                BYTE        1        ; FIB 1 3 5 7 9 ...
+
+                END
+
+## Input / Output
+
+As shown in the previous Fibonacci example, the Run_1802 program directly supports the "64" (OUT 4) instruction. When the 1802 writes a byte to port 4 with "64", the Run_1802 program prints that value (currently in decimal) to the terminal screen where the program was run. The current version will print whenever the N2 bit is set (N=4,5,6,7), but future versions may use different ports for different purposes.
+
+## Duration of Run
 
 When run without specifying the number of clock ticks, the current version will execute one million clock edges before stopping. This can be changed by specifying the number of clock edges with the "n=#" command line parameter. The program can also be stopped gracefully with Control-C at any time.
 
+## Saving 1802 Pin State
+
 In addition to just running the target program, Run_1802 can also save the state of most of the 1802's pin values as it runs. These outputs are specified with the "d" and "js" options. The "d" option stands for "debug" or "data", and it will cause Run_1802 to print both a header and a space-separated row of 0's and 1's to the terminal as it runs. The header will be printed once, but a row of data will be printed for each clock level value. So the CLK output will always alternate between 0 and 1. All of the other values should reflect each pin's state while the clock was either high or low. This output will normally scroll to the screen, but it can also be redirected to a file or other process through your operating system's or shell's mechanisms. The "js" option is a bit more specialized. It produces a Javascript file named "data.js" containing both the header and the data to be automatically copied into the HTML elements named "timing_header_area" and "timing_data_area". This allows them to be processed by a Javascript program for visualization and analysis. The stub file "data.html" shows how the "data.js" file is included, and it contains the text areas to accept the data.
+
+## Display and Python
 
 The final two options are "dm" and "p". The "dm" option causes Run_1802 to "display memory" after the run has completed. It will always show the first 16 bytes of memory followed by any other bytes that were non-zero after the run. This is helpful since Run_1802 starts with all memory set to 0, so any non-zero values at any location can be seen with the "dm" option. The "p" option causes Run_1802 to drop into a Python shell after the run has completed. This supports interactive exploration of the results as well as direct interaction with the 1802 - be careful!!
 
