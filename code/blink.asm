@@ -1,0 +1,7 @@
+START		ORG	0H
+		SEQ
+		REQ
+		BR	START
+
+		END
+
