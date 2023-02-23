@@ -232,30 +232,29 @@ open_console = False
 
 def h():
   print ( "Command Line Parameters:" )
-  print ( "  h=hex  to run raw hex code from command" )
-  print ( "  f=file to run a file (in plain hex format)" )
-  print ( "  n=#    to specify number of clocks to run" )
+  print ( "  h=hex  to run plain hex code from command" )
+  print ( "  f=file to run a hex file of several formats" )
+  print ( "  n=#    to specify number of half-clocks to run" )
   print ( "  d      to dump every pin while running" )
   print ( "  dm     to dump non-zero memory after run" )
   print ( "  js     to save output in data.js" )
   print ( "  p      to drop into Python after running" )
   print ( "  help   to print this help message and exit" )
   print ( "Useful functions from Python:" )
-  print ( "  h() to show this help text" )
+  print ( "  h()     to show this help text" )
+  print ( "  help()  to get Python help" )
   print ( "  reset() to reset the 1802" )
-  print ( "  run(n) run the 1802 by n half-clocks" )
-  print ( "  mem() to show first 16 plus all non-zero" )
+  print ( "  run(n)  to run the 1802 by n half-clocks" )
+  print ( "  mem()   to show first 16 plus all non-zero bytes" )
   print ( "  ram(start[,num[,any]]) to show selected memory" )
   print ( "  find(val,start,num,inv) to find values in memory" )
-  '''
-  print ( "  half_clock() toggle the clock" )
-  print ( "  full_clock() cycle the clock" )
-  print ( "  not_clear_low() to bring /clear pin low" )
-  print ( "  not_clear_high() to bring /clear pin high" )
-  '''
-  print ( "  help() to get Python help" )
+  print ( "Supported File Formats (autodetected from file):" )
+  print ( "  .hex - Intel Hex Format (address and data)" )
+  print ( "  .ahx - Address:Data Hex Format (address and data)" )
+  print ( "  .phx - Plain Hex Format (loaded at address 0)" )
   print ( "Use up and down arrows in Python for history" )
-  print ( "Use Control-C to exit at any time" )
+  print ( "Use Control-D to exit Python" )
+  print ( "Use Control-C to exit Run_1802" )
 
 if len(sys.argv) > 1:
   # print ( "Arguments: " + str(sys.argv) )
@@ -282,32 +281,92 @@ if len(sys.argv) > 1:
     if arg == "dm":
       dump_mem = True
 
-    d = None
+    src_txt = None
+
     if arg.startswith("f="):
       # Read a program from a file
       f = open(arg[2:],"r")
-      d = f.read()
+      src_txt = f.read()
       f.close()
-    if arg.startswith("h="):
+    elif arg.startswith("h="):
       # Read a program as hex a command option
-      d = arg[2:]
-    if (d != None) and (len(d) > 0):
-      # Remove any comments
-      dparts = d.split("\n")
+      src_txt = arg[2:]
+
+    if (src_txt != None) and (len(src_txt) > 0):
+
+      # Remove any comments (which may include ':')
+      dparts = src_txt.split("\n")
       for i in range(len(dparts)):
         if ';' in dparts[i]:
           dparts[i] = dparts[i].split(';')[0]
-      d = " ".join(dparts)
-      # Remove all the white space
-      d = d.strip()
-      d = d.replace(' ','')
-      d = d.replace('\n','')
-      d = d.replace('\r','')
-      d = d.replace('\t','')
-      # Write the program to memory
-      for i in range(len(d)/2):
-        memory[i] = int(d[2*i:(2*i)+2],16)
-        # print ("read mem = " + str(memory[i]))
+      src_txt = "\n".join(dparts)
+
+      # Print the file
+      print ( "Loading:\n" + src_txt )
+
+      # Determine if the source text has address information or not
+      if ':' in src_txt:
+        # This file has some lines in either in Intel Hex Format or addr:data format
+        lines = src_txt.split("\n")
+        next_mem_loc = 0
+        for ln in lines:
+          ln = ln.strip()
+          if len(ln) > 0:
+            if ln[0] == ':':
+              # This line should be in Intel Hex Format
+              bcnt = ln[1:3]
+              ad = ln[3:7]
+              rectyp = ln[7:9]
+              bytecount = int(bcnt,16)
+              addr = int(ad,16)
+              rtyp = int(rectyp,16)
+              dt = ln[9:9+(bytecount*2)]
+              cs = ln[9+(bytecount*2):9+(bytecount*2)+2]
+              #print ( "Line:   " + ln )
+              #print ( "IntHex: " + bcnt + "," + ad + "," + rectyp + "," + dt + "," + cs );
+              next_mem_loc = addr;
+              if rtyp == 0:
+                for i in range(len(dt)/2):
+                  memory[next_mem_loc] = int(dt[i*2:(i*2)+2],16)
+                  #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+                  next_mem_loc += 1
+            elif ':' in ln:
+              # This line should be in addr:data format (where data is optional)
+              parts = [ p.strip() for p in ln.split(':') ]
+              if len(parts[0].strip()) > 0:
+                next_mem_loc = int(parts[0].strip(),16)
+              if len(parts[1].strip()) > 0:
+                #print ( "Line: " + ln )
+                #print ( "Line: " + str(parts) )
+                for i in range(len(parts[1])/2):
+                  memory[next_mem_loc] = int(parts[1][2*i:(2*i)+2],16)
+                  #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+                  next_mem_loc += 1
+            else:
+              # This line is in plain hex format
+              # Remove all the white space
+              ln = ln.strip()
+              ln = ln.replace(' ','')
+              ln = ln.replace('\n','')
+              ln = ln.replace('\r','')
+              ln = ln.replace('\t','')
+              # Convert and write the program to memory
+              for i in range(len(ln)/2):
+                memory[next_mem_loc] = int(ln[2*i:(2*i)+2],16)
+                #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+                next_mem_loc += 1
+
+      else:
+        # Assume this is plain hex format
+        # Remove all the white space
+        src_txt = src_txt.strip()
+        src_txt = src_txt.replace(' ','')
+        src_txt = src_txt.replace('\n','')
+        src_txt = src_txt.replace('\r','')
+        src_txt = src_txt.replace('\t','')
+        # Convert and write the program to memory
+        for i in range(len(src_txt)/2):
+          memory[i] = int(src_txt[2*i:(2*i)+2],16)
 
 
 ##### Set Up the Pins #####
