@@ -247,10 +247,12 @@ def h():
   print ( "  mem() to show first 16 plus all non-zero" )
   print ( "  ram(start[,num[,any]]) to show selected memory" )
   print ( "  find(val,start,num,inv) to find values in memory" )
+  '''
   print ( "  half_clock() toggle the clock" )
   print ( "  full_clock() cycle the clock" )
   print ( "  not_clear_low() to bring /clear pin low" )
   print ( "  not_clear_high() to bring /clear pin high" )
+  '''
   print ( "  help() to get Python help" )
   print ( "Use up and down arrows in Python for history" )
   print ( "Use Control-C to exit at any time" )
