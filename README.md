@@ -57,7 +57,16 @@ That same program could also be recognized by Run_1802 as follows (comments and 
     7b     ; SEQ Turn on the Q output
     30 00  ; BR 00 Branch back and repeat
 
-Here's another "plain hex" example that produces the first few numbers of the Fibonacci sequence:
+In both cases, no addresses were given. The file just specified a list of bytes starting at 0 and going upward. But sometimes that's not very convenient. That's when adding an address can be handy. This example shows a very similar "blinking Q" program, but it jumps back and forth between two relatively far addresses.
+
+    ; Blink, Branch, and Repeat
+    
+    00: 7a 30 40   ; REQ Turn off the Q output and jump to 40
+    40: 7b 30 00   ; SEQ Turn on the Q output and jump back to 0
+
+That program could have been written without addresses by simply filling in zeros (or anything) between memory locations 3 and 3f. But that would be a lot of code and it would obscure the simplicity of this little program.
+
+Here's another "plain hex" example. This program produces the first few numbers of the Fibonacci sequence without using any addresses:
 
     F8 00 ; LDI 0
     BA    ; PHI A
@@ -83,40 +92,40 @@ Here's another "plain hex" example that produces the first few numbers of the Fi
     00    ; FIB 0 2 4 6 8 ...
     01    ; FIB 1 3 5 7 9 ...
 
-While not required in that example, numeric addresses could be added to show branch targets and data fields:
+While not required in that example, numeric addresses could still be added to show branch targets and data fields:
 
           F8 00 ; LDI 0
-          BA    ; PHI A
-          BB    ; PHI B
-          BC    ; PHI C
-          F8 1A ; LDI 1A
-          AA    ; PLO A
-          F8 1B ; LDI 1B
-          AB    ; PLO B
-          F8 00 ; LDI 0
-          AC    ; PLO C
-    0E:   EA    ; SEX A
-          F4    ; ADD
-          5A    ; STR A
-          64    ; OUT 4
-          2A    ; DEC A
-          EB    ; SEX B
-          F4    ; ADD
-          5B    ; STR B
-          64    ; OUT 4
-          2B    ; DEC B
-          30 0E ; BR 0E
-    1A:   00    ; FIB 0 2 4 6 8 ...
-    1B:   01    ; FIB 1 3 5 7 9 ...
+          BA    ; PHI A  ... zero A
+          BB    ; PHI B  ... zero B
+          BC    ; PHI C  ... zero C (which is never used)
+          F8 1A ; LDI 1A ... load the 1st "ping pong" address
+          AA    ; PLO A  ... A will be used to write to 1A
+          F8 1B ; LDI 1B ... load the 2nd "ping pong" address
+          AB    ; PLO B  ... B will be used to write to 1B
+          F8 00 ; LDI 0  ... Load a zero in C
+          AC    ; PLO C  ... However, C isn't used. Oops.
+    0E:   EA    ; SEX A  ... Use X to add from 1A
+          F4    ; ADD    ... Add from A to accumulator
+          5A    ; STR A  ... Store the result in 1A
+          64    ; OUT 4  ... Display the 1A value
+          2A    ; DEC A  ... Decrement after the output (which incremented)
+          EB    ; SEX B  ... Use X to add from 1B
+          F4    ; ADD    ... Add from B1 to the accumulator already holding 1A
+          5B    ; STR B  ... Store the value in 1B
+          64    ; OUT 4  ... Display the 1B value
+          2B    ; DEC B  ... Decrement after the output (which incremented)
+          30 0E ; BR 0E  ... Branch back to start again
+    1A:   00    ; Variable will hold 0 2 4 6 8 ...
+    1B:   01    ; Variable will hold 1 3 5 7 9 ...
 
-Note that Run_1802 will place (force) the bytes at those explicitly defined address fields to be located at those addresses - even if they overwrite existing code or data. Each line is processed sequentially, and the data is placed in memory sequentially until an address is encountered. Then the sequential placement process continues from that new point forward.
+This makes the program easier to read and understand. The addresses still had to be counted, but only once. After that, they're documented in the program. Note that Run_1802 will place (force) the bytes at those explicitly defined address fields to actually be located at those addresses - even if they overwrite existing code or data. Each line is processed sequentially, and the data is placed in memory sequentially until an address is encountered. Then the sequential placement process continues from that new point forward.
 
 Of course, almost all serious work will require a real assembler (such as the [A18 assembler](http://www.retrotechnology.com/memship/a18.html) written by William C. Colley and maintained and improved by Herbert R. Johnson). The A18 assembler produces standardized "Intel Hex" format files. Here's the output of the A18 assembler after processing a source code file for the previous Fibonacci examples:
 
     :1C000000F800BABBBCF81AAAF81BABF800ACEAF45A642AEBF45B642B300E0001CF
     :00001C01E3
 
-This is a very compact form and includes both address information and a checksum. The source code for that program came from the following file:
+This is a very compact form and includes both address information and a checksum. Here's the source code for that program:
 
     Ra          EQU    10
     Rb          EQU    11
@@ -149,6 +158,8 @@ This is a very compact form and includes both address information and a checksum
                 BYTE        1        ; FIB 1 3 5 7 9 ...
 
                 END
+
+Ultimately, the Run_1802 program isn't at all concerned with how the machine code was generated. It's only job is to make loading that code as easy as possible and to run it on a real 1802 with helpful features like pin logging and single stepping.
 
 ## Input / Output
 
