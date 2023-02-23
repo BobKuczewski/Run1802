@@ -8,7 +8,7 @@ The standard configuration has the Raspberry Pi's GPIO pins connected to various
 
 ## Hardware Needed
 
-This software should run on any modern Raspberry Pi computer containing the standard configuration of 40 pins supporting GPIO communications. This program was developed for a Raspberry Pi Zero, but should also work with the Raspberry Pi 3, 3A+, 3B, 3B+, and 4B. Of course, you'll also need an 1802 processor, a power supply, and a means to properly connect them all together (breadboard, wire wrap board, printed circuit board, etc). The software only relies on the libraries that come pre-installed with the Raspberry Pi operating system.
+This software should run on any modern Raspberry Pi computer containing the standard configuration of 40 pins supporting GPIO communications. This program was developed for a Raspberry Pi Zero, but should also work with the Raspberry Pi 3, 3A+, 3B, 3B+, and 4B. Of course, you'll also need an 1802 processor and a means to properly connect them together (breadboard, wire wrap board, printed circuit board, etc). The software only relies on the libraries that come pre-installed with the Raspberry Pi operating system.
 
 ## Use
 
@@ -35,15 +35,15 @@ For example, to run the classic blinking Q light program, enter this:
 
     python Run_1802.py h=7A7B3000
 
-The Run_1802 program will read that hex input (following "h=") into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, clock the 1802's CLK pin 16 cycles while in reset, and then continue clocking the 1802 at a relatively constant (but currently very slow) rate for a designated number of cycles. As the 1802 attempts to fetch each instruction, the Run_1802 program will decode the address lines, look up the current value of RAM at that location, and serve up the proper byte to the shared data bus. The 1802 processor will be running the program as it is being "spoon fed" by the Pi. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
+The Run_1802 program will read that hex input (following "h=") into the first 4 memory locations of its virtual 1802 RAM, reset the 1802, clock the 1802's CLK pin 16 cycles while in reset, and then continue clocking the 1802 at a relatively constant (but currently very slow) rate for a designated number of cycles. As the 1802 attempts to fetch each instruction, the Run_1802 program will decode the address lines, look up the current value of "RAM" at that location, and serve up the proper byte to the shared data bus. The 1802 processor will be running the program as it is being "spoon fed" by the Pi. The Run_1802 program responds to memory reads by producing values from its 64K internal memory, and it similarly responds to memory writes by storing values into its 64K internal memory.
 
 The Run_1802 program also supports an interactive mode through the Python interpreter when the "p" option is given on the command line. The command line Python interpreter will be entered when Run_1802 has finished executing the "n=#" of half clocks specified on the command line. To start the Python interpreter immediately, use both options: "n=0" and "p". This tells Run_1802 to execute 0 clocks and then enter the Python interpreter when done. The Python interpreter supports examination and modification of the 1802's "RAM" as well as running any number of clock cycles interactively. See the "Python" section below for more details.
 
 ## File Formats
 
-While entering a small hex program on the command line can be very handy, it's much more common to have a program file available. A program file can be specified with the f=filename option. Run_1802 supports 3 different file formats. The easist format is a simple stream of hex bytes (as in the last example of "7A7B3000"). This is known as "plain hex" format and files in this format are named ".phx". This is also the most practical format to enter on the command line. The second easiest format is "address hex" format with files named ".ahx". This is a superset of the plain hex format that allows an address field at the start of any line or on a line by itself. The address field must be terminated with a colon character (:) to distinguish it from data fields. Address fields are not required anywhere in an "address hex" file, but they can be added as needed to specify the starting points of segments of data and instructions. The most complex file format is "Intel Hex" format with files usually named ".hex". Intel Hex format is a widely adopted format and is [well documented on the web](https://en.wikipedia.org/wiki/Intel_HEX). Run_1802 can also read Intel Hex format files (but the checksum field is currently ignored).
+While entering a small hex program on the command line can be very handy, it's much more common to have a program file available. A program file can be specified with the f=filename option. Run_1802 supports 3 different file formats. The easist format is a simple stream of hex bytes (as in the last example of "7A7B3000"). This is known as "plain hex" format and files in this format are named ".phx". This is also the most practical format to enter on the command line. The second easiest format is "address hex" format with files named ".ahx". This is a superset of the plain hex format that allows an address field at the start of any line or on a line by itself. The address field must be terminated with a colon character (:) to distinguish it from data fields. Address fields are not required anywhere in an "address hex" file, but they can be added as needed to specify the starting points of segments of data and instructions. The most complex file format is "Intel Hex" format with files usually named ".hex". Intel Hex format is a widely adopted format and is [well documented on the web](https://en.wikipedia.org/wiki/Intel_HEX). Run_1802 can also read Intel Hex format files.
 
-One of the advantages of the plain-hex and address-hex formats is that they both support comments following a semi-colon. This is extremely helpful for anyone coding in machine language. Of course, the biggest advantage of the Intel hex format is that it is generally produced by a real assembler and doesn't need comments because the comments are in the source code.
+One of the advantages of the plain-hex and address-hex formats is that they both support comments following a semi-colon. This is extremely helpful for anyone coding in machine language. Of course, the biggest advantage of the Intel hex format is that it is generally produced by a real assembler and doesn't need comments in the machine code because the comments are in the source code.
 
 This is an example of a simple plain hex file:
 
@@ -83,7 +83,7 @@ Here's another "plain hex" example that produces the first few numbers of the Fi
     00    ; FIB 0 2 4 6 8 ...
     01    ; FIB 1 3 5 7 9 ...
 
-While not required in that example, numeric addresses could be added to show branch targets and data fields
+While not required in that example, numeric addresses could be added to show branch targets and data fields:
 
           F8 00 ; LDI 0
           BA    ; PHI A
@@ -111,12 +111,12 @@ While not required in that example, numeric addresses could be added to show bra
 
 Note that Run_1802 will place (force) the bytes at those explicitly defined address fields to be located at those addresses - even if they overwrite existing code or data. Each line is processed sequentially, and the data is placed in memory sequentially until an address is encountered. Then the sequential placement process continues from that new point forward.
 
-Of course, almost all serious work will require a real assembler (such as the [A18 assembler](http://www.retrotechnology.com/memship/a18.html) written by William C. Colley and maintained and improved by Herbert R. Johnson). The A18 assembler produces standardized "Intel Hex" format files. Here's the output of the A18 assembler processing a source code file for the previous Fibonacci examples:
+Of course, almost all serious work will require a real assembler (such as the [A18 assembler](http://www.retrotechnology.com/memship/a18.html) written by William C. Colley and maintained and improved by Herbert R. Johnson). The A18 assembler produces standardized "Intel Hex" format files. Here's the output of the A18 assembler after processing a source code file for the previous Fibonacci examples:
 
     :1C000000F800BABBBCF81AAAF81BABF800ACEAF45A642AEBF45B642B300E0001CF
     :00001C01E3
 
-This is a very compact form and includes both address information and a checksum (currently ignored by Run_1802). The source code for that program came from the following file:
+This is a very compact form and includes both address information and a checksum. The source code for that program came from the following file:
 
     Ra          EQU    10
     Rb          EQU    11
@@ -156,7 +156,7 @@ As shown in the previous Fibonacci example, the Run_1802 program directly suppor
 
 ## Duration of Run
 
-When run without specifying the number of clock ticks, the current version will execute one million clock edges before stopping. This can be changed by specifying the number of clock edges with the "n=#" command line parameter. The program can also be stopped gracefully with Control-C at any time.
+When run without specifying the number of clock ticks, the current version will attempt to execute one million clock edges before stopping. This can be changed by specifying the number of clock edges with the "n=#" command line parameter. The program can also be stopped gracefully with Control-C at any time.
 
 ## Saving 1802 Pin State
 
@@ -333,7 +333,7 @@ After 40 half-clocks, the Q output should still be off. Then run one more half-c
 
     >>> run(1)
 
-The Q output should then go high.
+The Q output should then go high. This is an example of running and stepping through a program while observing the state of the hardware.
 
 You can also explore and modify the 1802 RAM using normal Python syntax. The "RAM" in Run_1802 is stored internally as a Python list, so you can display the first 10 bytes with this command:
 
