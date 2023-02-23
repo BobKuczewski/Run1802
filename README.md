@@ -225,10 +225,6 @@ To support more advanced control and debugging, Run_1802.py includes a number of
     mem() to show first 16 bytes plus all non-zero bytes
     ram(start[,num[,any]]) to show selected memory
     find(val,start,num,inv) to find values in memory
-    half_clock() toggle the clock
-    full_clock() cycle the clock
-    not_clear_low() to bring /clear pin low
-    not_clear_high() to bring /clear pin high
 
 For example, to reset the 1802, call the reset() function (don't type the ">>>" prompt ... it should already be there):
 
@@ -237,12 +233,6 @@ For example, to reset the 1802, call the reset() function (don't type the ">>>" 
 To run the 1802 for 16 half-clock cycles (8 full clock cycles) enter:
 
     >>> run(16)
-
-Most of these are self-explanatory, but the last 4 (half_clock, full_clock, non_clear_low, and not_clear_high) may not be so obvious.
-
-The "half_clock" and "full_clock" functions simply toggle or cycle the clock line to the 1802. They do not provide any of the other supporting functionality provided by the "run" function. In other words, all of the other GPIO pins will remain as they were last set by the "run" command. There may be reasons to do this, but be very careful.
-
-Similarly, the "not_clear_low" and "not_clear_high" functions simply set the value of the 1802's clear pin. They are not the same as the "reset" function which also resets the clock to 0. So again, there may be reasons to do this, but be very careful.
 
 To get a feel for using these functions, run the simple blink program (7B first), but add the "n=0" and "p" options:
 
