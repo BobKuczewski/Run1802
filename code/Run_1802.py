@@ -314,21 +314,25 @@ if len(sys.argv) > 1:
           if len(ln) > 0:
             if ln[0] == ':':
               # This line should be in Intel Hex Format
-              bcnt = ln[1:3]
-              ad = ln[3:7]
-              rectyp = ln[7:9]
-              bytecount = int(bcnt,16)
-              addr = int(ad,16)
-              rtyp = int(rectyp,16)
+              bytecount = int(ln[1:3],16)
+              addr      = int(ln[3:7],16)
+              rectyp    = int(ln[7:9],16)
               dt = ln[9:9+(bytecount*2)]
-              cs = ln[9+(bytecount*2):9+(bytecount*2)+2]
-              #print ( "Line:   " + ln )
-              #print ( "IntHex: " + bcnt + "," + ad + "," + rectyp + "," + dt + "," + cs );
+              # Verify that the checksum is zero
+              checked_data = ln[1:2*(1+2+1+bytecount+1)+2]
+              c = 0
+              for i in range(len(checked_data)/2):
+                i2 = 2*i
+                c = c + int(checked_data[i2:i2+2],16)
+              if (c & 0xff) != 0:
+                print ( "Checksum error on line " + ln )
+                exit ( 3 )
+              # Set the starting location to get this data
               next_mem_loc = addr;
-              if rtyp == 0:
+              if rectyp == 0:
+                # Store the data in RAM
                 for i in range(len(dt)/2):
                   memory[next_mem_loc] = int(dt[i*2:(i*2)+2],16)
-                  #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
                   next_mem_loc += 1
             elif ':' in ln:
               # This line should be in addr:data format (where data is optional)
