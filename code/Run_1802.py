@@ -256,6 +256,27 @@ def h():
   print ( "Use Control-D to exit Python" )
   print ( "Use Control-C to exit Run_1802" )
 
+def split_code_text(s):
+  # Parse a string of hex with possible embedded spaces
+  # print ( "Newmem got " + str(s) )
+  mem = []
+  parts = s.strip().split()
+  for part in parts:
+    if len(part) <= 2:
+      mem.append ( int(part,16) )
+    else:
+      if (len(part) % 2) != 0:
+        # This string has an odd number of digits
+        # Save the first digit as a byte value
+        mem.append ( int(part[0],16) )
+        # Remove the first digit to make it even
+        part = part[1:]
+      # The part string now has pairs of digits
+      for i in range(len(part)/2):
+        mem.append ( int(part[2*i:(2*i)+2],16) )
+  # print ( "Newmem returning " + str(mem) )
+  return ( mem )
+
 if len(sys.argv) > 1:
   # print ( "Arguments: " + str(sys.argv) )
   for arg in sys.argv:
@@ -304,12 +325,13 @@ if len(sys.argv) > 1:
       # Print the file
       print ( "Loading:\n" + src_txt )
 
+      next_mem_loc = 0
       # Determine if the source text has address information or not
       if ':' in src_txt:
         # This file has some lines in either in Intel Hex Format or addr:data format
         lines = src_txt.split("\n")
-        next_mem_loc = 0
         for ln in lines:
+          # print ( "Processing line \"" + ln + "\"" )
           ln = ln.strip()
           if len(ln) > 0:
             if ln[0] == ':':
@@ -337,40 +359,30 @@ if len(sys.argv) > 1:
             elif ':' in ln:
               # This line should be in addr:data format (where data is optional)
               parts = [ p.strip() for p in ln.split(':') ]
-              if len(parts[0].strip()) > 0:
-                next_mem_loc = int(parts[0].strip(),16)
-              if len(parts[1].strip()) > 0:
-                #print ( "Line: " + ln )
-                #print ( "Line: " + str(parts) )
-                for i in range(len(parts[1])/2):
-                  memory[next_mem_loc] = int(parts[1][2*i:(2*i)+2],16)
-                  #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+              if len(parts[0]) > 0:
+                next_mem_loc = int(parts[0],16)
+              if len(parts[1]) > 0:
+                # Split the remaining parts by spaces or pairs of hex digits
+                newmem = split_code_text(parts[1])
+                for i in range(len(newmem)):
+                  memory[next_mem_loc] = newmem[i]
+                  # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
                   next_mem_loc += 1
             else:
               # This line is in plain hex format
-              # Remove all the white space
-              ln = ln.strip()
-              ln = ln.replace(' ','')
-              ln = ln.replace('\n','')
-              ln = ln.replace('\r','')
-              ln = ln.replace('\t','')
-              # Convert and write the program to memory
-              for i in range(len(ln)/2):
-                memory[next_mem_loc] = int(ln[2*i:(2*i)+2],16)
-                #print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+              newmem = split_code_text(ln)
+              for i in range(len(newmem)):
+                memory[next_mem_loc] = newmem[i]
+                # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
                 next_mem_loc += 1
 
       else:
-        # Assume this is plain hex format
-        # Remove all the white space
-        src_txt = src_txt.strip()
-        src_txt = src_txt.replace(' ','')
-        src_txt = src_txt.replace('\n','')
-        src_txt = src_txt.replace('\r','')
-        src_txt = src_txt.replace('\t','')
-        # Convert and write the program to memory
-        for i in range(len(src_txt)/2):
-          memory[i] = int(src_txt[2*i:(2*i)+2],16)
+        # Assume this entire text is plain hex format
+        newmem = split_code_text(src_txt)
+        for i in range(len(newmem)):
+          memory[next_mem_loc] = newmem[i]
+          # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
+          next_mem_loc += 1
 
 
 ##### Set Up the Pins #####
