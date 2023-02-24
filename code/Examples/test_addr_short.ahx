@@ -1,0 +1,9 @@
+; Blink, Jump and repeat
+
+00:   ; Locate this code at 00
+7a    ; REQ
+30 fd ; BR fd
+
+fd:   ; Locate this code at fd
+7b    ; SEQ
+30 00 ; BR 00
