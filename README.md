@@ -51,8 +51,8 @@ This is an example of a simple plain hex file:
 
 That same program could also be recognized by Run_1802 as follows (comments and white space are ignored):
 
-    ; Blink and repeat
-    
+    ; Blink and Repeat
+
     7a     ; REQ Turn off the Q output
     7b     ; SEQ Turn on the Q output
     30 00  ; BR 00 Branch back and repeat
@@ -60,7 +60,7 @@ That same program could also be recognized by Run_1802 as follows (comments and 
 In both cases, no addresses were given. The file just specified a list of bytes starting at 0 and going upward. But sometimes that's not very convenient. That's when adding an address can be handy. This example shows a very similar "blinking Q" program, but it jumps back and forth between two relatively far addresses.
 
     ; Blink, Branch, and Repeat
-    
+
     00: 7a 30 40   ; REQ Turn off the Q output and jump to 40
     40: 7b 30 00   ; SEQ Turn on the Q output and jump back to 0
 
