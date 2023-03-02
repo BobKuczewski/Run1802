@@ -4,9 +4,9 @@
 
 This project contains the software needed to run an RCA 1802 processor under direct control of a Raspberry Pi computer. Some of the background from this project can be found on the [COSMAC ELF Group web site](https://groups.io/g/cosmacelf). The following topics have current and/or historical relevance:
 
-    1802 in "Pi Land" - https://groups.io/g/cosmacelf/topic/1802_in_pi_land/97002181
-    1802 version of Ben Eater's 6502 "Hello World" series? - https://groups.io/g/cosmacelf/topic/1802_version_of_ben_eater_s/96397039
-    RCA 1802 future and beyond - https://groups.io/g/cosmacelf/topic/rca_1802_future_and_beyond/96804574
+* [1802 in "Pi Land"](https://groups.io/g/cosmacelf/topic/1802_in_pi_land/97002181)
+* [1802 version of Ben Eater's 6502 "Hello World" series?](https://groups.io/g/cosmacelf/topic/1802_version_of_ben_eater_s/96397039)
+* [RCA 1802 future and beyond](https://groups.io/g/cosmacelf/topic/rca_1802_future_and_beyond/96804574)
 
 The standard configuration for this project has the Raspberry Pi's GPIO pins connected to various 1802 processor pins - especially the 1802's clock pin. This allows the Raspberry Pi to clock the 1802 and interact with the 1802 on a clock by clock basis. In some configurations, the Raspberry Pi might just observe and optionally store the 1802's pin values. In other configurations, the Raspberry Pi might control the entire environment of the 1802 (memory, I/O, interrupts, etc). There could also be configurations where the Raspberry Pi controls some portions of the 1802 environment but not all.
 
