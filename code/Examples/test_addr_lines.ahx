@@ -1,0 +1,41 @@
+; Set Q, double address, Reset Q, double address
+
+0000:   ; Locate this code at 0000
+7b      ; SEQ
+c0 0100 ; LBR 0100
+
+0100:   ; Locate this code at 0100
+7a      ; REQ
+c0 0200 ; LBR 0200
+
+0200:   ; Locate this code at 0200
+7b      ; SEQ
+c0 0400 ; LBR 0400
+
+0400:   ; Locate this code at 0400
+7a      ; REQ
+c0 0800 ; LBR 0800
+
+0800:   ; Locate this code at 0800
+7b      ; SEQ
+c0 1000 ; LBR 1000
+
+1000:   ; Locate this code at 1000
+7a      ; REQ
+c0 2000 ; LBR 2000
+
+2000:   ; Locate this code at 2000
+7b      ; SEQ
+c0 4000 ; LBR 4000
+
+4000:   ; Locate this code at 4000
+7a      ; REQ
+c0 8000 ; LBR 8000
+
+8000:   ; Locate this code at 8000
+7b      ; SEQ
+c0 fffc ; LBR fffc
+
+fffc:   ; Locate this code at fffc
+7b      ; SEQ
+c0 0000 ; LBR 0000
