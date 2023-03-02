@@ -290,16 +290,14 @@ Python code that connects each pin to a variable used by Run_1802:
 
 As shown in that last code snippet, Run_1802 currently expects the following 1802 signals to be connected to these GPIO pins:
 
-    clock   connected to GPIO 26
-    nclear  connected to GPIO 19
-    ndmai   connected to GPIO 21
-    nint    connected to GPIO 20
-    tpa     connected to GPIO 25
-    tpb     connected to GPIO 24
-    sc0     connected to GPIO 27
-    nmrd    connected to GPIO 17
-    nmwr    connected to GPIO 16
-    n2      connected to GPIO 18
+    d0      connected to GPIO 0
+    d1      connected to GPIO 1
+    d2      connected to GPIO 2
+    d3      connected to GPIO 3
+    d4      connected to GPIO 4
+    d5      connected to GPIO 5
+    d6      connected to GPIO 6
+    d7      connected to GPIO 7
     ma0     connected to GPIO 8
     ma1     connected to GPIO 9
     ma2     connected to GPIO 10
@@ -308,15 +306,18 @@ As shown in that last code snippet, Run_1802 currently expects the following 180
     ma5     connected to GPIO 13
     ma6     connected to GPIO 14
     ma7     connected to GPIO 15
-    d7      connected to GPIO 7
-    d6      connected to GPIO 6
-    d5      connected to GPIO 5
-    d4      connected to GPIO 4
-    d3      connected to GPIO 3
-    d2      connected to GPIO 2
-    d1      connected to GPIO 1
-    d0      connected to GPIO 0
+    nmwr    connected to GPIO 16
+    nmrd    connected to GPIO 17
+    n2      connected to GPIO 18
+    nclear  connected to GPIO 19
+    nint    connected to GPIO 20
+    ndmai   connected to GPIO 21
     qout    connected to GPIO 22
+    nef1    connected to GPIO 23 (not implemented yet)
+    tpb     connected to GPIO 24
+    tpa     connected to GPIO 25
+    clock   connected to GPIO 26
+    sc0     connected to GPIO 27
 
 Note that proper engineering practices for the configuration and connecting of hardware are beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware. Also note that there have been two incompatible definitions for these pin mappings. The original definition is found in code prior to March 1st, 2023. This post-March2023 software should NOT be used with the pre-March2023 pin mapping, and similarly, the pre-March2023 software should NOT be used with this post-March2023 pin mapping.
 
