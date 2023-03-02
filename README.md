@@ -1,6 +1,6 @@
 # Run 1802
 
-![Timing Diagram](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Timing Diagram")
+![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Pi Zero and 1802")
 
 This project contains the software needed to run an RCA 1802 processor under direct control of a Raspberry Pi computer. Some of the background from this project can be found on the [COSMAC ELF Group web site](https://groups.io/g/cosmacelf). The following links have current and/or historical relevance:
 
