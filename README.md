@@ -188,7 +188,7 @@ The Run_1802 program can also be easily used for testing 1802 processors. Simply
 
 ## Connecting
 
-![1802 and Pi Zero](/docs/images/CDP1802_Raspberry_Pi_Zero.jpg?raw=true "1802 and Pi Zero")
+![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Pi Zero and 1802")
 
 The Run_1802 program is just software and it relies on a properly configured and connected 1802 and Raspberry Pi. Ensure that you have the appropriate skills and background before attempting to connect real hardware. Also use appropriate precautions when making connections. For example, the previous photograph shows a number of yellow wires that also contain an embedded resistor to limit the potential current flow between the 1802 and the Raspberry Pi. While such resistors shouldn't be needed, they are used to provide some (minimal) protection against miswiring or other unexpected conditions. Be sure to use good judgement when building any hardware project.
 
