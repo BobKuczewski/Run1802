@@ -1,6 +1,6 @@
 # Run 1802
 
-![Timing Diagram](/docs/images/Run_1802.png?raw=true "Timing Diagram")
+![Timing Diagram](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Timing Diagram")
 
 This project contains the software needed to run an RCA 1802 processor under direct control of a Raspberry Pi computer.
 
