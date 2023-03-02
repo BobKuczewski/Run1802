@@ -228,6 +228,7 @@ dump_data = False
 dump_mem = False
 dump_file = None
 num_clocks = 1000000
+clock_time = 2 * settling_sleep_time
 open_console = False
 
 def h():
@@ -291,6 +292,10 @@ if len(sys.argv) > 1:
 
     if arg == "p":
       open_console = True
+
+    if arg.startswith("c="):
+      clock_time = float(arg[2:])
+      # print ( "Arg sets clock_time = " + str(clock_time) )
 
     if arg.startswith("n="):
       num_clocks = int(arg[2:])
@@ -389,40 +394,44 @@ if len(sys.argv) > 1:
 
 GPIO.setmode(GPIO.BCM) # Use the Broadcom numbering shown on Pi ribbon connector plug.
 
-# Set up the CLOCK and /CLEAR as outputs for the Pi to control
-clock  = gpio_pin(21, gpio_pin.OUT, False)
-nclear = gpio_pin(20, gpio_pin.OUT, False)
+
+# Set up the CLOCK and /CLEAR and /INT as outputs for the Pi to control
+clock  = gpio_pin(26, gpio_pin.OUT, False)
+nclear = gpio_pin(19, gpio_pin.OUT, True)
+ndmai  = gpio_pin(21, gpio_pin.OUT, True)
+nint   = gpio_pin(20, gpio_pin.OUT, True)
 
 # Set up various indicators as inputs for the Pi to read
-tpa    = gpio_pin(26, gpio_pin.IN)
-tpb    = gpio_pin(19, gpio_pin.IN)
-sc0    = gpio_pin(16, gpio_pin.IN)
-nmrd   = gpio_pin(12, gpio_pin.IN)
-nmwr   = gpio_pin(13, gpio_pin.IN)
-n2     = gpio_pin(17, gpio_pin.IN)
+tpa    = gpio_pin(25, gpio_pin.IN)
+tpb    = gpio_pin(24, gpio_pin.IN)
+sc0    = gpio_pin(27, gpio_pin.IN)
+nmrd   = gpio_pin(17, gpio_pin.IN)
+nmwr   = gpio_pin(16, gpio_pin.IN)
+n2     = gpio_pin(18, gpio_pin.IN)
 
 # Set up the memory addresses as input for the Pi to read
-ma0    = gpio_pin( 6, gpio_pin.IN)
-ma1    = gpio_pin( 5, gpio_pin.IN)
-ma2    = gpio_pin( 0, gpio_pin.IN)
+ma0    = gpio_pin( 8, gpio_pin.IN)
+ma1    = gpio_pin( 9, gpio_pin.IN)
+ma2    = gpio_pin(10, gpio_pin.IN)
 ma3    = gpio_pin(11, gpio_pin.IN)
-ma4    = gpio_pin( 9, gpio_pin.IN)
-ma5    = gpio_pin(10, gpio_pin.IN)
-ma6    = gpio_pin(22, gpio_pin.IN)
-ma7    = gpio_pin(27, gpio_pin.IN)
+ma4    = gpio_pin(12, gpio_pin.IN)
+ma5    = gpio_pin(13, gpio_pin.IN)
+ma6    = gpio_pin(14, gpio_pin.IN)
+ma7    = gpio_pin(15, gpio_pin.IN)
 
 # Set up the data lines as bidirectional (default NOP)
-d7     = gpio_pin( 1, gpio_pin.BOTH, True)
-d6     = gpio_pin( 7, gpio_pin.BOTH, True)
-d5     = gpio_pin( 8, gpio_pin.BOTH, False)
-d4     = gpio_pin(25, gpio_pin.BOTH, False)
-d3     = gpio_pin(24, gpio_pin.BOTH, False)
-d2     = gpio_pin(23, gpio_pin.BOTH, True)
-d1     = gpio_pin(18, gpio_pin.BOTH, False)
-d0     = gpio_pin(15, gpio_pin.BOTH, False)
+d7     = gpio_pin(7, gpio_pin.BOTH, True)
+d6     = gpio_pin(6, gpio_pin.BOTH, True)
+d5     = gpio_pin(5, gpio_pin.BOTH, False)
+d4     = gpio_pin(4, gpio_pin.BOTH, False)
+d3     = gpio_pin(3, gpio_pin.BOTH, False)
+d2     = gpio_pin(2, gpio_pin.BOTH, True)
+d1     = gpio_pin(1, gpio_pin.BOTH, False)
+d0     = gpio_pin(0, gpio_pin.BOTH, False)
 
 # Set up the Q line as an input to the Pi
-qout   = gpio_pin(14, gpio_pin.IN)
+qout   = gpio_pin(22, gpio_pin.IN)
+
 
 # Assert Reset and hold it to initialize and observe
 nclear.set_val ( False )
@@ -493,14 +502,15 @@ def half_clock(n):
   global clock
   for i in range(n):
     clock.toggle()
+    time.sleep ( clock_time )
 
 def full_clock(n):
   global clock
   for i in range(n):
     clock.toggle()
-    time.sleep ( settling_sleep_time )
+    time.sleep ( clock_time )
     clock.toggle()
-    time.sleep ( settling_sleep_time )
+    time.sleep ( clock_time )
 
 def not_clear_low():
   global nclear
@@ -619,7 +629,7 @@ def run ( num_clocks ):
     if dump_file != None:
       dump_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
 
-    time.sleep ( settling_sleep_time )
+    time.sleep ( clock_time )
 
 def find (val=0, start=0, num=0x1000, inv=False):
   # Find val in RAM
@@ -675,7 +685,7 @@ for i in range(32):
     print_data ( "0" ) # notCLEAR is 0
   if dump_file != None:
     dump_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
-  time.sleep ( settling_sleep_time )
+  time.sleep ( clock_time )
 
 # Release the "Reset" line to let the 1802 start running
 nclear.set_val ( True )
