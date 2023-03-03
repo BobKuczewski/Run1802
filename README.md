@@ -1,6 +1,6 @@
 # Run 1802
 
-![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Pi Zero and 1802")
+![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230303.jpg?raw=true "Pi Zero and 1802")
 
 This project contains the software needed to run an RCA 1802 processor under direct control of a Raspberry Pi computer. Some of the background from this project can be found on the [COSMAC ELF Group web site](https://groups.io/g/cosmacelf). The following links have current and/or historical relevance:
 
@@ -188,7 +188,7 @@ The Run_1802 program can also be easily used for testing 1802 processors. Simply
 
 ## Connecting
 
-![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230301.jpg?raw=true "Pi Zero and 1802")
+![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230303.jpg?raw=true "Pi Zero and 1802")
 
 The Run_1802 program is just software and it relies on a properly configured and connected 1802 and Raspberry Pi. Ensure that you have the appropriate skills and background before attempting to connect real hardware. Also use appropriate precautions when making connections. For example, the previous photograph shows a number of yellow wires that also contain an embedded resistor to limit the potential current flow between the 1802 and the Raspberry Pi. While such resistors shouldn't be needed, they are used to provide some (minimal) protection against miswiring or other unexpected conditions. Be sure to use good judgement when building any hardware project.
 
@@ -266,46 +266,46 @@ Python code that connects each pin to a variable used by Run_1802:
     n2     = gpio_pin(18, gpio_pin.IN)
 
     # Set up the memory addresses as input for the Pi to read
-    ma0    = gpio_pin( 8, gpio_pin.IN)
-    ma1    = gpio_pin( 9, gpio_pin.IN)
-    ma2    = gpio_pin(10, gpio_pin.IN)
-    ma3    = gpio_pin(11, gpio_pin.IN)
-    ma4    = gpio_pin(12, gpio_pin.IN)
-    ma5    = gpio_pin(13, gpio_pin.IN)
-    ma6    = gpio_pin(14, gpio_pin.IN)
-    ma7    = gpio_pin(15, gpio_pin.IN)
+    ma0    = gpio_pin( 0, gpio_pin.IN)
+    ma1    = gpio_pin( 1, gpio_pin.IN)
+    ma2    = gpio_pin( 2, gpio_pin.IN)
+    ma3    = gpio_pin( 3, gpio_pin.IN)
+    ma4    = gpio_pin( 4, gpio_pin.IN)
+    ma5    = gpio_pin( 5, gpio_pin.IN)
+    ma6    = gpio_pin( 6, gpio_pin.IN)
+    ma7    = gpio_pin( 7, gpio_pin.IN)
 
-    # Set up the data lines as bidirectional (default NOP)
-    d7     = gpio_pin(7, gpio_pin.BOTH, True)
-    d6     = gpio_pin(6, gpio_pin.BOTH, True)
-    d5     = gpio_pin(5, gpio_pin.BOTH, False)
-    d4     = gpio_pin(4, gpio_pin.BOTH, False)
-    d3     = gpio_pin(3, gpio_pin.BOTH, False)
-    d2     = gpio_pin(2, gpio_pin.BOTH, True)
-    d1     = gpio_pin(1, gpio_pin.BOTH, False)
-    d0     = gpio_pin(0, gpio_pin.BOTH, False)
+    # Set up the data lines as bidirectional (with default NOP)
+    d0     = gpio_pin( 8, gpio_pin.BOTH, False)
+    d1     = gpio_pin( 9, gpio_pin.BOTH, False)
+    d2     = gpio_pin(10, gpio_pin.BOTH, True)
+    d3     = gpio_pin(11, gpio_pin.BOTH, False)
+    d4     = gpio_pin(12, gpio_pin.BOTH, False)
+    d5     = gpio_pin(13, gpio_pin.BOTH, False)
+    d6     = gpio_pin(14, gpio_pin.BOTH, True)
+    d7     = gpio_pin(15, gpio_pin.BOTH, True)
 
     # Set up the Q line as an input to the Pi
     qout   = gpio_pin(22, gpio_pin.IN)
 
 As shown in that last code snippet, Run_1802 currently expects the following 1802 signals to be connected to these GPIO pins:
 
-    d0      connected to GPIO 0
-    d1      connected to GPIO 1
-    d2      connected to GPIO 2
-    d3      connected to GPIO 3
-    d4      connected to GPIO 4
-    d5      connected to GPIO 5
-    d6      connected to GPIO 6
-    d7      connected to GPIO 7
-    ma0     connected to GPIO 8
-    ma1     connected to GPIO 9
-    ma2     connected to GPIO 10
-    ma3     connected to GPIO 11
-    ma4     connected to GPIO 12
-    ma5     connected to GPIO 13
-    ma6     connected to GPIO 14
-    ma7     connected to GPIO 15
+    ma0     connected to GPIO 0
+    ma1     connected to GPIO 1
+    ma2     connected to GPIO 2
+    ma3     connected to GPIO 3
+    ma4     connected to GPIO 4
+    ma5     connected to GPIO 5
+    ma6     connected to GPIO 6
+    ma7     connected to GPIO 7
+    d0      connected to GPIO 8
+    d1      connected to GPIO 9
+    d2      connected to GPIO 10
+    d3      connected to GPIO 11
+    d4      connected to GPIO 12
+    d5      connected to GPIO 13
+    d6      connected to GPIO 14
+    d7      connected to GPIO 15
     nmwr    connected to GPIO 16
     nmrd    connected to GPIO 17
     n2      connected to GPIO 18
