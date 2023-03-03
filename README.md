@@ -190,9 +190,9 @@ The Run_1802 program can also be easily used for testing 1802 processors. Simply
 
 ![Pi Zero and 1802](/docs/images/Breadboard_Wiring_20230303.jpg?raw=true "Pi Zero and 1802")
 
-The Run_1802 program is just software and it relies on a properly configured and connected 1802 and Raspberry Pi. Ensure that you have the appropriate skills and background before attempting to connect real hardware. Also use appropriate precautions when making connections. For example, the previous photograph shows a number of yellow wires that also contain an embedded resistor to limit the potential current flow between the 1802 and the Raspberry Pi. While such resistors shouldn't be needed, they are used to provide some (minimal) protection against miswiring or other unexpected conditions. Be sure to use good judgement when building any hardware project.
+The Run_1802 program is just software and it relies on a properly configured and connected 1802 and Raspberry Pi. Ensure that you have the appropriate skills and background before attempting to connect real hardware. Also use appropriate precautions when making connections. For example, early versions of this project used wires that also contained embedded resistors to limit the potential current flow between the 1802 and the Raspberry Pi. While such resistors shouldn't be needed, they have been used to provide some (minimal) protection against miswiring or other unexpected conditions. Be sure to use good judgement when building any hardware project.
 
-The current version contains both comments and code that describe the expected environment as shown from these snippets from Run_1802.py (note that there was an earlier version in February of 2023 which is NOT compatible with the current pin mapping):
+The current version contains both comments and code that describe the expected environment as shown from these snippets from Run_1802.py (note that there have been earlier versions prior to March 3, 2023 which are NOT compatible with the current pin mapping):
 
 Raspberry Pi pin definitions:
 
@@ -319,7 +319,7 @@ As shown in that last code snippet, Run_1802 currently expects the following 180
     clock   connected to GPIO 26
     sc0     connected to GPIO 27
 
-Note that proper engineering practices for the configuration and connecting of hardware are beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware. Also note that there have been two incompatible definitions for these pin mappings. The original definition is found in code prior to March 1st, 2023. This post-March2023 software should NOT be used with the pre-March2023 pin mapping, and similarly, the pre-March2023 software should NOT be used with this post-March2023 pin mapping.
+Note that proper engineering practices for the configuration and connecting of hardware are beyond the scope of this documentation. The earlier picture shows a "breadboard", but other options are certainly available. Please ensure that you have the proper skills and background before attempting to build anything with real hardware. Also note that there have been two incompatible definitions for these pin mappings. The original definitions are found in code prior to March 3rd, 2023. This new version (March 3, 2023 onward) should NOT be used with the earlier pin mappings, and similarly, the earlier software should NOT be used with hardware using the current pin mapping.
 
 ## Python Power
 
