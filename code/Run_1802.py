@@ -66,6 +66,7 @@
 
 # Initially all GPIO pins are configured as inputs
 
+import Pi_to_1802 as pins
 
 import os
 import sys
@@ -325,15 +326,15 @@ if len(sys.argv) > 1:
 
     if (src_txt != None) and (len(src_txt) > 0):
 
+      # Print the file
+      print ( "Loading:\n" + (40*'=') + '\n' + src_txt + (40*'=') + '\n' )
+
       # Remove any comments (which may include ':')
       dparts = src_txt.split("\n")
       for i in range(len(dparts)):
         if ';' in dparts[i]:
           dparts[i] = dparts[i].split(';')[0]
       src_txt = "\n".join(dparts)
-
-      # Print the file
-      print ( "Loading:\n" + src_txt )
 
       next_mem_loc = 0
       # Determine if the source text has address information or not
@@ -401,41 +402,41 @@ GPIO.setmode(GPIO.BCM) # Use the Broadcom numbering shown on Pi ribbon connector
 
 
 # Set up the CLOCK and /CLEAR and /INT as outputs for the Pi to control
-clock  = gpio_pin(26, gpio_pin.OUT, False)
-nclear = gpio_pin(19, gpio_pin.OUT, True)
-ndmai  = gpio_pin(21, gpio_pin.OUT, True)
-nint   = gpio_pin(20, gpio_pin.OUT, True)
+clock  = gpio_pin(pins.CLOCK,  gpio_pin.OUT, False)
+nclear = gpio_pin(pins.NCLEAR, gpio_pin.OUT, True)
+ndmai  = gpio_pin(pins.NDMAI,  gpio_pin.OUT, True)
+nint   = gpio_pin(pins.NINT,   gpio_pin.OUT, True)
 
 # Set up various indicators as inputs for the Pi to read
-tpa    = gpio_pin(25, gpio_pin.IN)
-tpb    = gpio_pin(24, gpio_pin.IN)
-sc0    = gpio_pin(27, gpio_pin.IN)
-nmrd   = gpio_pin(17, gpio_pin.IN)
-nmwr   = gpio_pin(16, gpio_pin.IN)
-n2     = gpio_pin(18, gpio_pin.IN)
+tpa    = gpio_pin(pins.TPA,  gpio_pin.IN)
+tpb    = gpio_pin(pins.TPB,  gpio_pin.IN)
+sc0    = gpio_pin(pins.SC0,  gpio_pin.IN)
+nmrd   = gpio_pin(pins.NMRD, gpio_pin.IN)
+nmwr   = gpio_pin(pins.NMWR, gpio_pin.IN)
+n2     = gpio_pin(pins.N2,   gpio_pin.IN)
 
 # Set up the memory addresses as input for the Pi to read
-ma0    = gpio_pin( 0, gpio_pin.IN)
-ma1    = gpio_pin( 1, gpio_pin.IN)
-ma2    = gpio_pin( 2, gpio_pin.IN)
-ma3    = gpio_pin( 3, gpio_pin.IN)
-ma4    = gpio_pin( 4, gpio_pin.IN)
-ma5    = gpio_pin( 5, gpio_pin.IN)
-ma6    = gpio_pin( 6, gpio_pin.IN)
-ma7    = gpio_pin( 7, gpio_pin.IN)
+ma0    = gpio_pin(pins.MA0, gpio_pin.IN)
+ma1    = gpio_pin(pins.MA1, gpio_pin.IN)
+ma2    = gpio_pin(pins.MA2, gpio_pin.IN)
+ma3    = gpio_pin(pins.MA3, gpio_pin.IN)
+ma4    = gpio_pin(pins.MA4, gpio_pin.IN)
+ma5    = gpio_pin(pins.MA5, gpio_pin.IN)
+ma6    = gpio_pin(pins.MA6, gpio_pin.IN)
+ma7    = gpio_pin(pins.MA7, gpio_pin.IN)
 
 # Set up the data lines as bidirectional (with default NOP)
-d0     = gpio_pin( 8, gpio_pin.BOTH, False)
-d1     = gpio_pin( 9, gpio_pin.BOTH, False)
-d2     = gpio_pin(10, gpio_pin.BOTH, True)
-d3     = gpio_pin(11, gpio_pin.BOTH, False)
-d4     = gpio_pin(12, gpio_pin.BOTH, False)
-d5     = gpio_pin(13, gpio_pin.BOTH, False)
-d6     = gpio_pin(14, gpio_pin.BOTH, True)
-d7     = gpio_pin(15, gpio_pin.BOTH, True)
+d0     = gpio_pin(pins.D0, gpio_pin.BOTH, False)
+d1     = gpio_pin(pins.D1, gpio_pin.BOTH, False)
+d2     = gpio_pin(pins.D2, gpio_pin.BOTH, True)
+d3     = gpio_pin(pins.D3, gpio_pin.BOTH, False)
+d4     = gpio_pin(pins.D4, gpio_pin.BOTH, False)
+d5     = gpio_pin(pins.D5, gpio_pin.BOTH, False)
+d6     = gpio_pin(pins.D6, gpio_pin.BOTH, True)
+d7     = gpio_pin(pins.D7, gpio_pin.BOTH, True)
 
 # Set up the Q line as an input to the Pi
-qout   = gpio_pin(22, gpio_pin.IN)
+qout   = gpio_pin(pins.QOUT, gpio_pin.IN)
 
 
 # Assert Reset and hold it to initialize and observe
@@ -639,7 +640,8 @@ inst_proc_table = [ # InstructionName, OpCode, NumAdditionalBytes
 ]
 
 
-def get_instr(hx):
+def get_instr(hx,addr):
+  global memory
   best_instr = ""
   best_instr_index = -1
   # Start by looking for an exact match
@@ -669,19 +671,16 @@ def get_instr(hx):
           if (hx == '6F'): best_instr = 'IN7'; best_instr_index = i;
         elif (inst_proc_table[i][1][1].upper() == 'N'):
           best_instr = inst_proc_table[i][0].upper() + " " + hx[1].upper();
+          best_instr_index = i;
         else:
           best_instr = inst_proc_table[i][0].upper();
-  '''
-  if (best_instr_index >= 0) {
-    // Handle Immediate Operands of 1 or 2 bytes
-    if (inst_proc_table[best_instr_index][2] > 0) {
-      best_instr = best_instr + " " + hex2(mem[rr[rp]+1]);
-      if (inst_proc_table[best_instr_index][2] > 1) {
-        best_instr = best_instr + " " + hex2(mem[rr[rp]+2]);
-      }
-    }
-  }
-  '''
+          best_instr_index = i;
+  if best_instr_index >= 0:
+    # Handle Immediate Operands of 1 or 2 bytes
+    if inst_proc_table[best_instr_index][2] > 0:
+      best_instr = best_instr + " " + hex2(memory[addr+1]);
+      if inst_proc_table[best_instr_index][2] > 1:
+        best_instr = best_instr + " " + hex2(memory[addr+2]);
   return ( best_instr );
 
 
@@ -798,7 +797,7 @@ def run ( num_clocks ):
             db1 = d1.get_val()
             db0 = d0.get_val()
             data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
-            print ( "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte)))
+            print ( "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte),addr) )
 
     if dump_data:
       print_data ( "1" ) # notCLEAR is 0
