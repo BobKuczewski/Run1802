@@ -225,6 +225,7 @@ memory[3] = 0x00
 ##### Process Command Line Parameters #####
 
 dump_data = False
+trace_exec = False
 dump_mem = False
 dump_file = None
 num_clocks = 1000000
@@ -237,6 +238,7 @@ def h():
   print ( "  f=file to run a hex file of several formats" )
   print ( "  n=#    to specify number of half-clocks to run" )
   print ( "  d      to dump every pin while running" )
+  print ( "  t      to trace execution while running" )
   print ( "  dm     to dump non-zero memory after run" )
   print ( "  js     to save output in data.js" )
   print ( "  p      to drop into Python after running" )
@@ -289,6 +291,9 @@ if len(sys.argv) > 1:
 
     if arg == "d":
       dump_data = True
+
+    if arg == "t":
+      trace_exec = True
 
     if arg == "p":
       open_console = True
@@ -497,6 +502,7 @@ def print_data(ncl):
 addr_hi = 0
 n2_hi = 0
 out4_val = None
+tpb_hi = 0
 
 def half_clock(n):
   global clock
@@ -540,11 +546,162 @@ def reset():
   nclear.set_val ( True )
   time.sleep ( 0.01 )
 
+
+inst_proc_table = [ # InstructionName, OpCode, NumAdditionalBytes
+	[ "IDL",  "00", 0 ],
+	[ "LDN",  "0N", 0 ],
+	[ "INC",  "1N", 0 ],
+	[ "DEC",  "2N", 0 ],
+	[ "BR",   "30", 1 ],
+	[ "BQ",   "31", 1 ],
+	[ "BZ",   "32", 1 ],
+	[ "BPZ",  "33", 1 ],
+	[ "BGE",  "33", 1 ],
+	[ "BDF",  "33", 1 ],
+	[ "B1",   "34", 1 ],
+	[ "B2",   "35", 1 ],
+	[ "B3",   "36", 1 ],
+	[ "B4",   "37", 1 ],
+	[ "NBR",  "38", 0 ],
+	[ "SKP",  "38", 0 ],
+	[ "BNQ",  "39", 1 ],
+	[ "BNZ",  "3A", 1 ],
+	[ "BL",   "3B", 1 ],
+	[ "BM",   "3B", 1 ],
+	[ "BNF",  "3B", 1 ],
+	[ "BN1",  "3C", 1 ],
+	[ "BN2",  "3D", 1 ],
+	[ "BN3",  "3E", 1 ],
+	[ "BN4",  "3F", 1 ],
+	[ "LDA",  "4N", 0 ],
+	[ "STR",  "5N", 0 ],
+	[ "IRX",  "60", 0 ],
+	[ "OUT",  "61", 0 ],
+	[ "ILL",  "68", 0 ],
+	[ "INP",  "69", 0 ],
+	[ "RET",  "70", 0 ],
+	[ "DIS",  "71", 0 ],
+	[ "LDXA", "72", 0 ],
+	[ "STXD", "73", 0 ],
+	[ "ADC",  "74", 0 ],
+	[ "SDB",  "75", 0 ],
+	[ "RSHR", "76", 0 ],
+	[ "SHRC", "76", 0 ],
+	[ "SMB",  "77", 0 ],
+	[ "SAV",  "78", 0 ],
+	[ "MARK", "79", 0 ],
+	[ "REQ",  "7A", 0 ],
+	[ "SEQ",  "7B", 0 ],
+	[ "ADCI", "7C", 1 ],
+	[ "SDBI", "7D", 1 ],
+	[ "RSHL", "7E", 0 ],
+	[ "SHLC", "7E", 0 ],
+	[ "SMBI", "7F", 1 ],
+	[ "GLO",  "8N", 0 ],
+	[ "GHI",  "9N", 0 ],
+	[ "PLO",  "AN", 0 ],
+	[ "PHI",  "BN", 0 ],
+	[ "LBR",  "C0", 2 ],
+	[ "LBQ",  "C1", 2 ],
+	[ "LBZ",  "C2", 2 ],
+	[ "LBDF", "C3", 2 ],
+	[ "NOP",  "C4", 0 ],
+	[ "LSNQ", "C5", 0 ],
+	[ "LSNZ", "C6", 0 ],
+	[ "LSNF", "C7", 0 ],
+	[ "NLBR", "C8", 0 ],
+	[ "LSKP", "C8", 0 ],
+	[ "LBNQ", "C9", 2 ],
+	[ "LBNZ", "CA", 2 ],
+	[ "LBNF", "CB", 2 ],
+	[ "LSIE", "CC", 0 ],
+	[ "LSQ",  "CD", 0 ],
+	[ "LSZ",  "CE", 0 ],
+	[ "LSDF", "CF", 0 ],
+	[ "SEP",  "DN", 0 ],
+	[ "SEX",  "EN", 0 ],
+	[ "LDX",  "F0", 0 ],
+	[ "OR",   "F1", 0 ],
+	[ "AND",  "F2", 0 ],
+	[ "XOR",  "F3", 0 ],
+	[ "ADD",  "F4", 0 ],
+	[ "SD",   "F5", 0 ],
+	[ "SHR",  "F6", 0 ],
+	[ "SM",   "F7", 0 ],
+	[ "LDI",  "F8", 1 ],
+	[ "ORI",  "F9", 1 ],
+	[ "ANI",  "FA", 1 ],
+	[ "XRI",  "FB", 1 ],
+	[ "ADI",  "FC", 1 ],
+	[ "SDI",  "FD", 1 ],
+	[ "SHL",  "FE", 0 ],
+	[ "SMI",  "FF", 1 ]
+]
+
+
+def get_instr(hx):
+  best_instr = ""
+  best_instr_index = -1
+  # Start by looking for an exact match
+  for i in range(len(inst_proc_table)):
+    if hx.upper() == inst_proc_table[i][1]:
+      best_instr = inst_proc_table[i][0];
+      best_instr_index = i;
+  if best_instr_index < 0:
+    # No exact match, so look for a match of first digit only
+    for i in range(len(inst_proc_table)):
+      if hx[0].upper() == inst_proc_table[i][1][0].upper():
+        if ( (hx[0] == '6') and ((hx[1] != '0') or (hx[0] != '8')) ):
+          # This is either an input or an output instruction
+          if (hx == '61'): best_instr = 'OUT1'; best_instr_index = i;
+          if (hx == '62'): best_instr = 'OUT2'; best_instr_index = i;
+          if (hx == '63'): best_instr = 'OUT3'; best_instr_index = i;
+          if (hx == '64'): best_instr = 'OUT4'; best_instr_index = i;
+          if (hx == '65'): best_instr = 'OUT5'; best_instr_index = i;
+          if (hx == '66'): best_instr = 'OUT6'; best_instr_index = i;
+          if (hx == '67'): best_instr = 'OUT7'; best_instr_index = i;
+          if (hx == '69'): best_instr = 'IN1'; best_instr_index = i;
+          if (hx == '6A'): best_instr = 'IN2'; best_instr_index = i;
+          if (hx == '6B'): best_instr = 'IN3'; best_instr_index = i;
+          if (hx == '6C'): best_instr = 'IN4'; best_instr_index = i;
+          if (hx == '6D'): best_instr = 'IN5'; best_instr_index = i;
+          if (hx == '6E'): best_instr = 'IN6'; best_instr_index = i;
+          if (hx == '6F'): best_instr = 'IN7'; best_instr_index = i;
+        elif (inst_proc_table[i][1][1].upper() == 'N'):
+          best_instr = inst_proc_table[i][0].upper() + " " + hx[1].upper();
+        else:
+          best_instr = inst_proc_table[i][0].upper();
+  '''
+  if (best_instr_index >= 0) {
+    // Handle Immediate Operands of 1 or 2 bytes
+    if (inst_proc_table[best_instr_index][2] > 0) {
+      best_instr = best_instr + " " + hex2(mem[rr[rp]+1]);
+      if (inst_proc_table[best_instr_index][2] > 1) {
+        best_instr = best_instr + " " + hex2(mem[rr[rp]+2]);
+      }
+    }
+  }
+  '''
+  return ( best_instr );
+
+
+def hex2 ( v ):
+  v = hex(v)[2:]
+  if len(v) == 2: return ( v )
+  return ( '0' + v )
+
+def hex4 ( v ):
+  v = hex(v)[2:]
+  while len(v) < 4:
+    v = '0' + v
+  return ( v )
+
 def run ( num_clocks ):
   # Run the 1802 by num_clocks clock edges
   global addr_hi
   global n2_hi
   global out4_val
+  global tpb_hi
 
   for i in range(num_clocks):
     clock.toggle()
@@ -623,6 +780,25 @@ def run ( num_clocks ):
         d2.set_val ( (mem_out>>2) & 0x01 )
         d1.set_val ( (mem_out>>1) & 0x01 )
         d0.set_val ( (mem_out>>0) & 0x01 )
+
+    tpb_now = tpb.get_val()
+    if tpb_now:
+      tpb_hi = 1
+    else:
+      if tpb_hi:
+        tpb_hi = 0
+        if trace_exec:
+          if not sc0.get_val():
+            db7 = d7.get_val()
+            db6 = d6.get_val()
+            db5 = d5.get_val()
+            db4 = d4.get_val()
+            db3 = d3.get_val()
+            db2 = d2.get_val()
+            db1 = d1.get_val()
+            db0 = d0.get_val()
+            data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+            print ( "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte)))
 
     if dump_data:
       print_data ( "1" ) # notCLEAR is 0
