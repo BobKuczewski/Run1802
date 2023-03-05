@@ -66,8 +66,6 @@
 
 # Initially all GPIO pins are configured as inputs
 
-import Pi_to_1802 as pins
-
 import os
 import sys
 import time
@@ -354,7 +352,7 @@ if len(sys.argv) > 1:
               # Verify that the checksum is zero
               checked_data = ln[1:2*(1+2+1+bytecount+1)+2]
               c = 0
-              for i in range(len(checked_data)/2):
+              for i in range(int(len(checked_data)/2)):
                 i2 = 2*i
                 c = c + int(checked_data[i2:i2+2],16)
               if (c & 0xff) != 0:
@@ -364,7 +362,7 @@ if len(sys.argv) > 1:
               next_mem_loc = addr;
               if rectyp == 0:
                 # Store the data in RAM
-                for i in range(len(dt)/2):
+                for i in range(int(len(dt)/2)):
                   memory[next_mem_loc] = int(dt[i*2:(i*2)+2],16)
                   next_mem_loc += 1
             elif ':' in ln:
@@ -397,9 +395,9 @@ if len(sys.argv) > 1:
 
 
 ##### Set Up the Pins #####
+import Pi_to_1802 as pins
 
 GPIO.setmode(GPIO.BCM) # Use the Broadcom numbering shown on Pi ribbon connector plug.
-
 
 # Set up the CLOCK and /CLEAR and /INT as outputs for the Pi to control
 clock  = gpio_pin(pins.CLOCK,  gpio_pin.OUT, False)
