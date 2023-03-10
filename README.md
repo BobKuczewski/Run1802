@@ -7,6 +7,7 @@ This project contains the software needed to run an RCA 1802 processor under dir
 * [1802 in "Pi Land"](https://groups.io/g/cosmacelf/topic/1802_in_pi_land/97002181)
 * [1802 version of Ben Eater's 6502 "Hello World" series?](https://groups.io/g/cosmacelf/topic/1802_version_of_ben_eater_s/96397039)
 * [RCA 1802 future and beyond](https://groups.io/g/cosmacelf/topic/rca_1802_future_and_beyond/96804574)
+* [KiCad Learning Project](https://groups.io/g/cosmacelf/topic/kicad_learning_project/97380168)
 * [Bob Kay's 1802pi GitHub Site](https://github.com/Bob-Kay/1802pi)
 
 The standard configuration for this project has the Raspberry Pi's GPIO pins connected to various 1802 processor pins - especially the 1802's clock pin. This allows the Raspberry Pi to clock the 1802 and interact with the 1802 on a clock by clock basis. In some configurations, the Raspberry Pi might just observe and optionally store the 1802's pin values. In other configurations, the Raspberry Pi might control the entire environment of the 1802 (memory, I/O, interrupts, etc). There could also be configurations where the Raspberry Pi controls some portions of the 1802 environment but not all.
@@ -256,6 +257,7 @@ Python code that connects each pin to a variable used by Run_1802:
     nclear = gpio_pin(19, gpio_pin.OUT, True)
     ndmai  = gpio_pin(21, gpio_pin.OUT, True)
     nint   = gpio_pin(20, gpio_pin.OUT, True)
+    nef1   = gpio_pin(23, gpio_pin.OUT)
 
     # Set up various indicators as inputs for the Pi to read
     tpa    = gpio_pin(25, gpio_pin.IN)
@@ -313,7 +315,7 @@ As shown in that last code snippet, Run_1802 currently expects the following 180
     nint    connected to GPIO 20
     ndmai   connected to GPIO 21
     qout    connected to GPIO 22
-    nef1    connected to GPIO 23 (not implemented yet)
+    nef1    connected to GPIO 23
     tpb     connected to GPIO 24
     tpa     connected to GPIO 25
     clock   connected to GPIO 26
