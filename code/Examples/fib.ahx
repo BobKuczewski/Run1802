@@ -2,14 +2,14 @@
 F8 00 ; LDI 0
 BA    ; PHI A
 BB    ; PHI B
-BC    ; PHI C
-F8 1A ; LDI 1A
+F8 18 ; LDI 18 (FIB1)
 AA    ; PLO A
-F8 1B ; LDI 1B
+F8 19 ; LDI 19 (FIB2)
 AB    ; PLO B
 F8 00 ; LDI 0
-AC    ; PLO C
-0E:EA ; SEX A
+
+0C:   ; (LOOP)
+EA    ; SEX A
 F4    ; ADD
 5A    ; STR A
 64    ; OUT 4
@@ -19,6 +19,9 @@ F4    ; ADD
 5B    ; STR B
 64    ; OUT 4
 2B    ; DEC B
-30 0E ; BR 0E (EA SEX A) 
-1A:00 ; FIB 0 2 4 6 8 ...
-1B:01 ; FIB 1 3 5 7 9 ...
+30 0C ; BR 0C (LOOP)
+
+18:   ; (FIB1)
+00    ; FIB 0 2 4 6 8 ...
+19:   ; (FIB2)
+01    ; FIB 1 3 5 7 9 ...
