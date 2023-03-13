@@ -1,6 +1,31 @@
+; Test each of the 8 address lines as both low and high
 ; Set Q, double address, Reset Q, double address
 
 0000:   ; Locate this code at 0000
+7b      ; SEQ
+c0 0004 ; LBR 0004
+
+0004:   ; Locate this code at 0004
+7a      ; REQ
+c0 0008 ; LBR 0008
+
+0008:   ; Locate this code at 0008
+7b      ; SEQ
+c0 0010 ; LBR 0010
+
+0010:   ; Locate this code at 0010
+7a      ; REQ
+c0 0020 ; LBR 0020
+
+0020:   ; Locate this code at 0020
+7b      ; SEQ
+c0 0040 ; LBR 0040
+
+0040:   ; Locate this code at 0040
+7a      ; REQ
+c0 0080 ; LBR 0080
+
+0080:   ; Locate this code at 0080
 7b      ; SEQ
 c0 0100 ; LBR 0100
 
@@ -37,5 +62,5 @@ c0 8000 ; LBR 8000
 c0 fffc ; LBR fffc
 
 fffc:   ; Locate this code at fffc
-7b      ; SEQ
+7a      ; REQ
 c0 0000 ; LBR 0000
