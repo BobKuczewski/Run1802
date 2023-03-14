@@ -226,7 +226,7 @@ memory[3] = 0x00
 dump_data = False
 trace_exec = False
 dump_mem = False
-dump_file = None
+js_data_file = None
 num_clocks = 1000000
 clock_time = 2 * settling_sleep_time
 open_console = False
@@ -274,7 +274,7 @@ def split_code_text(s):
         # Remove the first digit to make it even
         part = part[1:]
       # The part string now has pairs of digits
-      for i in range(int(len(part)/2)):
+      for i in range(len(part)/2):
         mem.append ( int(part[2*i:(2*i)+2],16) )
   # print ( "Newmem returning " + str(mem) )
   return ( mem )
@@ -306,7 +306,7 @@ if len(sys.argv) > 1:
       # print ( "Arg sets num_clocks = " + str(num_clocks) )
 
     if arg == "js":
-      dump_file = open ( "data.js", "w" )
+      js_data_file = open ( "data.js", "w" )
 
     if arg == "dm":
       dump_mem = True
@@ -324,15 +324,15 @@ if len(sys.argv) > 1:
 
     if (src_txt != None) and (len(src_txt) > 0):
 
-      # Print the file
-      print ( "Loading:\n" + (40*'=') + '\n' + src_txt + (40*'=') + '\n' )
-
       # Remove any comments (which may include ':')
       dparts = src_txt.split("\n")
       for i in range(len(dparts)):
         if ';' in dparts[i]:
           dparts[i] = dparts[i].split(';')[0]
       src_txt = "\n".join(dparts)
+
+      # Print the file
+      print ( "Loading:\n" + (40*'=') + '\n' + src_txt + (40*'=') + '\n' )
 
       next_mem_loc = 0
       # Determine if the source text has address information or not
@@ -494,8 +494,8 @@ def get_data_string ( ncl ):
 
 def print_data(ncl):
   s = get_data_string(ncl)
-  if dump_file != None:
-    dump_file.write ( " + \"" + s + "\\n\"\n" );
+  if js_data_file != None:
+    js_data_file.write ( " + \"" + s + "\\n\"\n" );
   print ( s )
 
 addr_hi = 0
@@ -799,8 +799,8 @@ def run ( num_clocks ):
 
     if dump_data:
       print_data ( "1" ) # notCLEAR is 0
-    if dump_file != None:
-      dump_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
+    if js_data_file != None:
+      js_data_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
 
     time.sleep ( clock_time )
 
@@ -842,13 +842,27 @@ def mem ():
       print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
   print ( "-------------------" )
 
+# Save the "dump_data" flag and disable for this section
+saved_dump_data = dump_data
+dump_data = False
+# Release the "Reset" line to let the 1802 start running
+nclear.set_val ( True )
+time.sleep ( 0.1 )
+# Run just the first few machine cycles to create a repeatable state
+run ( (9+5) * 2 )
+time.sleep ( 0.1 )
+# Reassert the "Reset" line to reset the 1802
+nclear.set_val ( False )
+time.sleep ( 0.1 )
+# Restore the "dump_data" flag
+dump_data = saved_dump_data
 
 # Print the header as appropriate for this run
-if dump_data or ( dump_file != None ):
+if dump_data or ( js_data_file != None ):
   if dump_data:
     print ( get_header_string() + "\n" )
-  if dump_file != None:
-    dump_file.write ( get_js_header_string() )
+  if js_data_file != None:
+    js_data_file.write ( get_js_header_string() )
 
 
 # Toggle the clock to observe the processor in Reset
@@ -856,9 +870,10 @@ for i in range(32):
   clock.toggle()
   if dump_data:
     print_data ( "0" ) # notCLEAR is 0
-  if dump_file != None:
-    dump_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
+  if js_data_file != None:
+    js_data_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
   time.sleep ( clock_time )
+
 
 # Release the "Reset" line to let the 1802 start running
 nclear.set_val ( True )
