@@ -224,9 +224,10 @@ memory[3] = 0x00
 ##### Process Command Line Parameters #####
 
 dump_data = False
+dump_js = False
+js_data_file = None
 trace_exec = False
 dump_mem = False
-js_data_file = None
 num_clocks = 1000000
 clock_time = 2 * settling_sleep_time
 open_console = False
@@ -307,6 +308,7 @@ if len(sys.argv) > 1:
 
     if arg == "js":
       js_data_file = open ( "data.js", "w" )
+      dump_js = True
 
     if arg == "dm":
       dump_mem = True
@@ -494,7 +496,7 @@ def get_data_string ( ncl ):
 
 def print_data(ncl):
   s = get_data_string(ncl)
-  if js_data_file != None:
+  if dump_js and (js_data_file != None):
     js_data_file.write ( " + \"" + s + "\\n\"\n" );
   print ( s )
 
@@ -799,7 +801,7 @@ def run ( num_clocks ):
 
     if dump_data:
       print_data ( "1" ) # notCLEAR is 0
-    if js_data_file != None:
+    if dump_js and (js_data_file != None):
       js_data_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
 
     time.sleep ( clock_time )
@@ -842,9 +844,11 @@ def mem ():
       print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
   print ( "-------------------" )
 
-# Save the "dump_data" flag and disable for this section
+# Save the "dump_data" and "dump_js" flags and disable for this section
 saved_dump_data = dump_data
+saved_dump_js = dump_js
 dump_data = False
+dump_js = False
 # Release the "Reset" line to let the 1802 start running
 nclear.set_val ( True )
 time.sleep ( 0.1 )
@@ -854,15 +858,15 @@ time.sleep ( 0.1 )
 # Reassert the "Reset" line to reset the 1802
 nclear.set_val ( False )
 time.sleep ( 0.1 )
-# Restore the "dump_data" flag
+# Restore the "dump_data" and jump_js flags
 dump_data = saved_dump_data
+dump_js = saved_dump_js
 
 # Print the header as appropriate for this run
-if dump_data or ( js_data_file != None ):
-  if dump_data:
-    print ( get_header_string() + "\n" )
-  if js_data_file != None:
-    js_data_file.write ( get_js_header_string() )
+if dump_data:
+  print ( get_header_string() + "\n" )
+if dump_js and (js_data_file != None):
+  js_data_file.write ( get_js_header_string() )
 
 
 # Toggle the clock to observe the processor in Reset
@@ -870,7 +874,7 @@ for i in range(32):
   clock.toggle()
   if dump_data:
     print_data ( "0" ) # notCLEAR is 0
-  if js_data_file != None:
+  if dump_js and (js_data_file != None):
     js_data_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
   time.sleep ( clock_time )
 
