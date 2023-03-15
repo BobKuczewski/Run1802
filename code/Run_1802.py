@@ -310,6 +310,10 @@ if len(sys.argv) > 1:
       js_data_file = open ( "data.js", "w" )
       dump_js = True
 
+    if arg.startswith("js="):
+      js_data_file = open ( arg[3:], "w" )
+      dump_js = True
+
     if arg == "dm":
       dump_mem = True
 
