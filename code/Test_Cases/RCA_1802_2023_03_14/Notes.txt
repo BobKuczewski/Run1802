@@ -1,0 +1,9 @@
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Good_01.js > Good_01.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_01.js > Bad_01.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_02.js > Bad_02.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_03.js > Bad_03.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_04.js > Bad_04.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_05.js > Bad_05.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Bad_06.js > Bad_06.txt
+python Run_1802.py f=Examples/test_addr_lines.ahx n=2600 d js=Good_02.js > Good_02.txt
+

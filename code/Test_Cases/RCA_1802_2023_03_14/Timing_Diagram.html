@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Timing Diagram</title>
+<meta charset="utf-8"/>
+</head>
+
+<script>
+
+function replace_all ( s, t, r ) {
+  let l = s.length;
+  do {
+    l = s.length;
+    s = s.replace(t, r);
+  } while (s.length != l);
+  return ( s )
+}
+
+
+var gd = null;
+
+var timing_names = [ "Clk", "MRD", "SC0", "TPA", "TPB", "Q", "A2", "A1", "A0", "D7", "D6", "D5", "D4", "D3", "D2", "D1", "D0" ];
+
+var timing_data = [];
+
+var time_points_list = [];
+function draw_in_area ( drawing_area, prog_text ) {
+  var w = drawing_area.width;
+  var h = drawing_area.height;
+
+  timing_names = document.getElementById("timing_header_area").value;
+  timing_names = replace_all ( timing_names, '  ', ' ');
+  timing_names = timing_names.split(' ');
+
+  timing_data = document.getElementById("timing_data_area").value;
+  timing_data = replace_all(timing_data, '\n\n', '\n');
+  timing_data = timing_data.split('\n');
+
+  var ctxt = drawing_area.getContext("2d");
+  ctxt.fillStyle = "#222222"; // Background Color
+  ctxt.fillRect(0,0,w,h);
+
+  time_points_list = [];
+  for (let tp=0; tp<timing_data.length; tp++) {
+    time_points_list.push ( timing_data[tp].split(' ') );
+  }
+
+  let npts = time_points_list.length;
+  let num_plots = timing_names.length;
+  let panel_ht = h / num_plots;
+
+  // Draw the plots
+  var color_list = [ "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#cccccc" ];
+  for (let p=0; p<num_plots; p++) {
+    ctxt.lineCap = "round"; // butt or round or square
+    // ctxt.strokeStyle = "#FF0000"; // Default Line Color
+    ctxt.strokeStyle = color_list[p%color_list.length]; // Default Line Color
+    ctxt.beginPath();
+    let base_y = p * h / num_plots;
+    let lx = 0;
+    let ly = 0;
+    ctxt.font = "12px Arial";
+    ctxt.fillStyle = "#bbbbbb";
+    ctxt.fillText ( timing_names[p], 10, base_y + 13 );
+    for (let n=0; n<npts; n++) {
+      let x = n * w / npts;
+      let y = base_y + ((panel_ht/2) * (1 - time_points_list[n][p])) + (panel_ht/4);
+      if (n == 0) {
+        ctxt.moveTo ( x, y );
+      } else {
+        ctxt.lineTo ( x, ly );
+        ctxt.lineTo ( x, y );
+      }
+      lx = x;
+      ly = y;
+    }
+    ctxt.stroke();
+  }
+
+}
+
+
+var def_prog = '';
+
+function check_prog(program) {
+}
+
+function reset_pars() {
+  var drawing_area = document.getElementById ( "drawing_area" );
+  var ctxt = drawing_area.getContext("2d");
+  ctxt.lineWidth = 1;
+}
+
+function draw_area(program) {
+  var drawing_area = document.getElementById ( "drawing_area" );
+  var prog_text = document.getElementById('timing_data_area').value;
+  draw_in_area ( drawing_area, prog_text );
+}
+
+function dw ( delta ) {
+  var drawing_area = document.getElementById ( "drawing_area" );
+  drawing_area.width = drawing_area.width + delta;
+}
+
+function dh ( delta ) {
+  var drawing_area = document.getElementById ( "drawing_area" );
+  drawing_area.height = drawing_area.height + delta;
+}
+
+
+</script>
+
+<body
+  onload="draw_area(def_prog)"
+  onresize="draw_area(def_prog)"
+>
+<!-- style="overflow:hidden; margin:0px; padding:0px; border:0px; background-color:#222222;" -->
+
+<center>
+<table>
+<!-- Implement as a canvas -->
+<tr>
+<td align="center">
+<canvas
+  id="drawing_area"
+  width="1200" height="500"
+  style="margin:0px; padding:0px; border:0px solid #cccccc;"
+>
+  Your browser does not support the HTML5 canvas tag.
+</canvas>
+</td>
+</tr>
+<tr>
+<td align="center">
+<input type="button" name="ref_model" value="Run" onclick="reset_pars(); draw_area(document.getElementById('timing_data_area').value);"></input>
+<input type="button" name="H+" value="H+" onclick="dh(20); draw_area(document.getElementById('timing_data_area').value);"></input>
+<input type="button" name="H-" value="H-" onclick="dh(-20); draw_area(document.getElementById('timing_data_area').value);"></input>
+<input type="button" name="W+" value="W+" onclick="dw(20); draw_area(document.getElementById('timing_data_area').value);"></input>
+<input type="button" name="W-" value="W-" onclick="dw(-20); draw_area(document.getElementById('timing_data_area').value);"></input></td>
+</tr>
+<tr>
+<td align="center">
+<textarea id="timing_header_area" rows="1" cols="80" onchange="check_prog(document.getElementById('timing_header_area').value)" >
+Clk MRD SC0 TPA TPB Q A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0
+</textarea>
+</td>
+</tr>
+<tr>
+<td align="center">
+<textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog(document.getElementById('timing_data_area').value)" >
+0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 1 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 1 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 0 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 1 0 0 1 1 0 1 0 0 0 1 1 0 0 0 0
+0 1 0 0 1 1 0 1 0 0 0 1 1 0 0 0 0
+1 1 0 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 1 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+0 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+1 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+0 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+1 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+0 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+1 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+0 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+1 1 1 0 1 1 0 1 1 0 0 0 0 0 0 0 0
+0 1 1 0 1 1 0 1 1 0 0 0 0 0 0 0 0
+1 1 1 0 0 1 0 1 1 0 0 0 0 0 0 0 0
+0 0 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 0 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 1 1 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 1 1 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 1 0 1 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 0 0 1 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 0 0 1 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 0 1 0 0 1 0 1 1 1 1 0 1 1
+1 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 0 1 0 1 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 1 0 0 0 1 0 1 1 1 1 0 1 1
+1 0 1 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 0 0 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+0 0 0 1 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 1 0 0 0 0 0 0 1 1 1 1 0 1 0
+0 1 0 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+1 1 0 0 1 0 0 0 1 0 1 1 1 1 0 1 1
+0 1 0 0 1 0 0 0 1 0 1 1 1 1 0 1 1
+1 1 0 0 0 0 0 0 1 0 1 1 1 1 0 1 1
+0 0 1 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 1 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 1 0 0 0 0 0 0 1 1 1 1 0 1 0
+0 0 1 0 0 0 0 0 0 0 1 1 1 1 0 1 0
+1 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
+</textarea>
+</td>
+</tr>
+<tr>
+<td align="left">
+<h2>Timing Diagram</h2>
+<p>Enter column headings in first box (strings).</p>
+<!-- <p>Enter column colors in second box (3 chars each of rgb).</p> -->
+<p>Enter data columns second box (all 1's and 0's).</p>
+
+</td>
+</tr>
+</table>
+
+<!-- This script can overwrite the data in the text areas -->
+<script src="data.js"></script>
+
+</body>
+</html>
+
