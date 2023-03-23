@@ -53,7 +53,7 @@ def bival ( val ):
 # needed at all, but it was added to remove
 # any timing concerns during development.
 
-settling_sleep_time = 0.001
+settling_sleep_time = 0.00001
 
 ######################
 # The gpio_pin class #
@@ -166,6 +166,101 @@ class memory:
   def __init__(self, size=65536):
     self.mem = [0 for i in range(size)]
 
+  def split_code_text(self, s):
+    # Parse a string of hex with possible embedded spaces
+    # print ( "Newmem got " + str(s) )
+    mem = []
+    parts = s.strip().split()
+    for part in parts:
+      if len(part) <= 2:
+        mem.append ( int(part,16) )
+      else:
+        if (len(part) % 2) != 0:
+          # This string has an odd number of digits
+          # Save the first digit as a byte value
+          mem.append ( int(part[0],16) )
+          # Remove the first digit to make it even
+          part = part[1:]
+        # The part string now has pairs of digits
+        for i in range(len(part)/2):
+          mem.append ( int(part[2*i:(2*i)+2],16) )
+    # print ( "Newmem returning " + str(mem) )
+    return ( mem )
+
+  def load ( self, src_txt ):
+    # Automatically loads from: (1) plain hex, (2) hex with addresses, (3) Intel Hex
+    if (src_txt != None) and (len(src_txt) > 0):
+
+      # Remove any comments (which may include ':')
+      dparts = src_txt.split("\n")
+      for i in range(len(dparts)):
+        if ';' in dparts[i]:
+          dparts[i] = dparts[i].split(';')[0]
+      src_txt = "\n".join(dparts)
+
+      # Print the file
+      print ( "Loading:\n" + (40*'=') + '\n' + src_txt + (40*'=') + '\n' )
+
+      next_mem_loc = 0
+      # Determine if the source text has address information or not
+      if ':' in src_txt:
+        # This file has some lines in either in Intel Hex Format or addr:data format
+        lines = src_txt.split("\n")
+        for ln in lines:
+          # print ( "Processing line \"" + ln + "\"" )
+          ln = ln.strip()
+          if len(ln) > 0:
+            if ln[0] == ':':
+              # This line should be in Intel Hex Format
+              bytecount = int(ln[1:3],16)
+              addr      = int(ln[3:7],16)
+              rectyp    = int(ln[7:9],16)
+              dt = ln[9:9+(bytecount*2)]
+              # Verify that the checksum is zero
+              checked_data = ln[1:2*(1+2+1+bytecount+1)+2]
+              c = 0
+              for i in range(int(len(checked_data)/2)):
+                i2 = 2*i
+                c = c + int(checked_data[i2:i2+2],16)
+              if (c & 0xff) != 0:
+                print ( "Checksum error on line " + ln )
+                exit ( 3 )
+              # Set the starting location to get this data
+              next_mem_loc = addr;
+              if rectyp == 0:
+                # Store the data in RAM
+                for i in range(int(len(dt)/2)):
+                  self.mem[next_mem_loc] = int(dt[i*2:(i*2)+2],16)
+                  next_mem_loc += 1
+            elif ':' in ln:
+              # This line should be in addr:data format (where data is optional)
+              parts = [ p.strip() for p in ln.split(':') ]
+              if len(parts[0]) > 0:
+                next_mem_loc = int(parts[0],16)
+              if len(parts[1]) > 0:
+                # Split the remaining parts by spaces or pairs of hex digits
+                newmem = self.split_code_text(parts[1])
+                for i in range(len(newmem)):
+                  self.mem[next_mem_loc] = newmem[i]
+                  # print ( "mem[" + str(next_mem_loc) + "] = " + hex(self.mem[next_mem_loc]) )
+                  next_mem_loc += 1
+            else:
+              # This line is in plain hex format
+              newmem = self.split_code_text(ln)
+              for i in range(len(newmem)):
+                self.mem[next_mem_loc] = newmem[i]
+                # print ( "mem[" + str(next_mem_loc) + "] = " + hex(self.mem[next_mem_loc]) )
+                next_mem_loc += 1
+
+      else:
+        # Assume this entire text is plain hex format
+        newmem = self.split_code_text(src_txt)
+        for i in range(len(newmem)):
+          self.mem[next_mem_loc] = newmem[i]
+          # print ( "mem[" + str(next_mem_loc) + "] = " + hex(self.mem[next_mem_loc]) )
+          next_mem_loc += 1
+
+
 #####################
 # The cdp1802 class #
 #####################
@@ -175,6 +270,7 @@ class cdp1802:
     self.num_half_clocks = 0
     self.clock_time = clock_time
     self.mem = memory()
+    self.instr_set = instruction_set()
 
     ##### Set Up the Pins #####
     GPIO.setmode(GPIO.BCM) # Use the Broadcom numbering shown on Pi ribbon connector plug.
@@ -219,10 +315,25 @@ class cdp1802:
     self.d7     = gpio_pin(pins.D7, gpio_pin.BOTH, True)
     self.data = pin_group ( [self.d7, self.d6, self.d5, self.d4, self.d3, self.d2, self.d1, self.d0] )
 
+    self.ma_addr = 0
+    self.addr_hi = 0
+    self.addr_lo = 0
+    self.cur_addr = 0
+    self.n2_hi = 0
+    self.n_mrd = 1
+    self.n_mwr = 1
+    self.tpb_now = 0
+    self.tpb_hi = 0
+    self.out4_val = None
+    self.io_as_hex = False
+    self.trace_exec = False
+    self.stop_on_idle = False
+    self.dump_mem = False
+
   def reset ( self ):
     # Assert the "Reset" line and pause
     self.nclear.set_val ( False )
-    time.sleep ( 0.01 )
+    time.sleep ( 0.001 )
 
     # Run the clock while in reset
     self.full_clock(32)
@@ -233,7 +344,7 @@ class cdp1802:
     # Release the "Reset" line to let the 1802 start running
     self.nclear.set_val ( True )
     self.num_half_clocks = 0
-    time.sleep ( 0.01 )
+    time.sleep ( 0.001 )
 
   # Define a function to verify that all data lines are inputs
   def all_data_are_inputs(self):
@@ -253,9 +364,9 @@ class cdp1802:
     return ( s )
 
   def get_vheader_string(self):
-    s  = "n C T T S n n N m m m m m m m m a d d d d d d d d\n"
-    s += "C L P P C R W   a a a a a a a a I\n"
-    s += "L K A B 0 D R 2 7 6 5 4 3 2 1 0 N 7 6 5 4 3 2 1 0 Q"
+    s  = "C C T T S n n N m m m m m m m m a d d d d d d d d\n"
+    s += "L L P P C R W   a a a a a a a a I\n"
+    s += "# K A B 0 D R 2 7 6 5 4 3 2 1 0 N 7 6 5 4 3 2 1 0 Q"
     return ( s )
 
   def get_js_header_string(self):
@@ -293,32 +404,266 @@ class cdp1802:
             str(self.qout.get_val()))
     return ( s )
 
+  def get_state ( self ):
+    # Execute a fixed set of instructions to extract state and return to starting point
+    print ( "Top of get_state" )
+
+    # Start by continuing to execute the current program until TPA is high and SC0 is low
+    while (not self.tpa.get_val()) and (not self.sc0.get_val()):
+      self.clock.toggle()
+      time.sleep ( self.clock_time )
+      self.update()
+      # time.sleep ( self.clock_time )
+      self.num_half_clocks += 1
+
+    print ( "TPA should be high and SC0 low" )
+
+    # The 1802 is now preparing to fetch the next instruction
+    # This is the return location after collecting the internal state information
+
+    # Collect the high address while TPA is high
+    hi_addr = 0
+    while self.tpa.get_val():
+      # Get the current address lines from the 1802
+      a0 = self.ma0.get_val()
+      a1 = self.ma1.get_val()
+      a2 = self.ma2.get_val()
+      a3 = self.ma3.get_val()
+      a4 = self.ma4.get_val()
+      a5 = self.ma5.get_val()
+      a6 = self.ma6.get_val()
+      a7 = self.ma7.get_val()
+      hi_addr = (a7 << 7) | (a6 << 6) | (a5 << 5) | (a4 << 4) | (a3 << 3) | (a2 << 2) | (a1 << 1) | a0
+      self.half_clock_only(1)
+
+    print ( "Got the high address = " + hex2(hi_addr) )
+
+    # TPA is now complete, so wait for the start of TPB
+    while not self.tpb.get_val():
+      self.half_clock_only(1)
+
+    print ( "Got TPB" )
+
+    # The Not Memory Read line should be low
+    if not self.nmrd.get_val():
+      print ( "Unexpected condition: nMRD is high but should be low" )
+      return
+
+    print ( "Memory Read is low" )
+
+    # The Not Memory Read line is low, so present the next instruction on the data bus
+    mem_out = 0x30
+    # Put the instruction onto the data bus
+    self.d7.set_val ( (mem_out>>7) & 0x01 )
+    self.d6.set_val ( (mem_out>>6) & 0x01 )
+    self.d5.set_val ( (mem_out>>5) & 0x01 )
+    self.d4.set_val ( (mem_out>>4) & 0x01 )
+    self.d3.set_val ( (mem_out>>3) & 0x01 )
+    self.d2.set_val ( (mem_out>>2) & 0x01 )
+    self.d1.set_val ( (mem_out>>1) & 0x01 )
+    self.d0.set_val ( (mem_out>>0) & 0x01 )
+
+    print ( "Present data on the data bus" )
+
+    # Continue to present the data while Memory Read line is low and save the low address
+    lo_addr = 0
+    while not self.nmrd.get_val():
+      # Get the current address lines from the 1802
+      a0 = self.ma0.get_val()
+      a1 = self.ma1.get_val()
+      a2 = self.ma2.get_val()
+      a3 = self.ma3.get_val()
+      a4 = self.ma4.get_val()
+      a5 = self.ma5.get_val()
+      a6 = self.ma6.get_val()
+      a7 = self.ma7.get_val()
+      lo_addr = (a7 << 7) | (a6 << 6) | (a5 << 5) | (a4 << 4) | (a3 << 3) | (a2 << 2) | (a1 << 1) | a0
+      self.half_clock_only(1)
+
+    # The hi_addr and lo_addr should contain the return address
+    # From here onward, there is no need to collect any more address information
+    print ( "Return Addr: " + hex2(hi_addr) + " " + hex2(lo_addr) )
+
+    # Convert the Raspberry Pi data lines to read mode with calls to get_val()
+    self.d7.get_val()
+    self.d6.get_val()
+    self.d5.get_val()
+    self.d4.get_val()
+    self.d3.get_val()
+    self.d2.get_val()
+    self.d1.get_val()
+    self.d0.get_val()
+
+    # Wait for the next read to produce the jump address
+    while self.nmrd.get_val():
+      self.half_clock_only(1)
+
+    # The Not Memory Read line is low, so present the jump address on the data bus
+    mem_out = 0x00
+    # Put the data onto the data bus
+    self.d7.set_val ( (mem_out>>7) & 0x01 )
+    self.d6.set_val ( (mem_out>>6) & 0x01 )
+    self.d5.set_val ( (mem_out>>5) & 0x01 )
+    self.d4.set_val ( (mem_out>>4) & 0x01 )
+    self.d3.set_val ( (mem_out>>3) & 0x01 )
+    self.d2.set_val ( (mem_out>>2) & 0x01 )
+    self.d1.set_val ( (mem_out>>1) & 0x01 )
+    self.d0.set_val ( (mem_out>>0) & 0x01 )
+
+    # Continue to present the data while Memory Read line is low
+    while not self.nmrd.get_val():
+      self.half_clock_only(1)
+
+    # Return to normal processing
+    return
+
+
+  def update ( self ):
+    # Get the current address lines from the 1802
+    a0 = self.ma0.get_val()
+    a1 = self.ma1.get_val()
+    a2 = self.ma2.get_val()
+    a3 = self.ma3.get_val()
+    a4 = self.ma4.get_val()
+    a5 = self.ma5.get_val()
+    a6 = self.ma6.get_val()
+    a7 = self.ma7.get_val()
+    self.ma_addr = (a7 << 7) | (a6 << 6) | (a5 << 5) | (a4 << 4) | (a3 << 3) | (a2 << 2) | (a1 << 1) | a0
+
+    if self.tpa.get_val():
+      # Keep saving the high address inside the TPA active region.
+      self.addr_hi = self.ma_addr
+      self.cur_addr = (self.addr_hi<<8)|self.addr_lo
+      # print ( "Addr at TPA: " + str(self.cur_addr) + " = " + str(self.addr_hi) + " + " + str(self.addr_lo) )
+
+    if True:  # or self.tpb.get_val():
+      # Keep saving the low address always?
+      self.addr_lo = self.ma_addr
+      self.cur_addr = (self.addr_hi<<8)|self.addr_lo
+      # print ( "Addr at TPB: " + str(self.cur_addr) + " = " + str(self.addr_hi) + " + " + str(self.addr_lo) )
+
+    if self.n2.get_val():
+      # Preserve the fact that n2 was high
+      self.n2_hi = 1
+      # Also preserve the last sample while high
+      db7 = self.d7.get_val()
+      db6 = self.d6.get_val()
+      db5 = self.d5.get_val()
+      db4 = self.d4.get_val()
+      db3 = self.d3.get_val()
+      db2 = self.d2.get_val()
+      db1 = self.d1.get_val()
+      db0 = self.d0.get_val()
+      self.out4_val = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+    else:
+      if self.n2_hi != 0:
+        # n2 had been high, but just went low, so output
+        if self.io_as_hex:
+          xout = hex(self.out4_val).upper()[2:]
+          if len(xout) < 2:
+            xout = '0' + xout
+          print ( xout )
+        else:
+          print ( str(self.out4_val) )
+        # Reset  n2_hi and out4_val
+        self.n2_hi = 0
+        self.out4_val = None
+
+
+    # Get /MRD and /MRW for later use
+    self.n_mrd = self.nmrd.get_val()
+    self.n_mwr = self.nmwr.get_val()
+
+    if self.n_mrd:
+        # Not Memory Read is high, so the 1802 isn't reading (and may be writing)
+        # Convert the Raspberry Pi data lines to read mode with a call to get_val()
+        db7 = self.d7.get_val()
+        db6 = self.d6.get_val()
+        db5 = self.d5.get_val()
+        db4 = self.d4.get_val()
+        db3 = self.d3.get_val()
+        db2 = self.d2.get_val()
+        db1 = self.d1.get_val()
+        db0 = self.d0.get_val()
+
+        if not self.n_mwr:
+          # The 1802 wants to write to memory, so convert the data and write it to memory
+          data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+          self.mem.mem[self.cur_addr] = data_byte
+          # print ( "Setting mem[" + str(self.cur_addr) + "] to " + str(data_byte) )
+
+    else:
+        # The 1802 wants to read from memory (instruction or data)
+        # Present the requested byte to the data bus
+        mem_out = self.mem.mem[self.cur_addr]
+
+        # Put the instruction onto the data bus
+        self.d7.set_val ( (mem_out>>7) & 0x01 )
+        self.d6.set_val ( (mem_out>>6) & 0x01 )
+        self.d5.set_val ( (mem_out>>5) & 0x01 )
+        self.d4.set_val ( (mem_out>>4) & 0x01 )
+        self.d3.set_val ( (mem_out>>3) & 0x01 )
+        self.d2.set_val ( (mem_out>>2) & 0x01 )
+        self.d1.set_val ( (mem_out>>1) & 0x01 )
+        self.d0.set_val ( (mem_out>>0) & 0x01 )
+
+    self.tpb_now = self.tpb.get_val()
+    if self.tpb_now:
+      self.tpb_hi = 1
+    else:
+      if self.tpb_hi:
+        self.tpb_hi = 0
+        if self.trace_exec or self.stop_on_idle:
+          if not self.sc0.get_val():
+            # Get the value on the data bus
+            db7 = self.d7.get_val()
+            db6 = self.d6.get_val()
+            db5 = self.d5.get_val()
+            db4 = self.d4.get_val()
+            db3 = self.d3.get_val()
+            db2 = self.d2.get_val()
+            db1 = self.d1.get_val()
+            db0 = self.d0.get_val()
+            data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
+            if self.trace_exec:
+              print ( "Fetch at addr " + hex4(self.cur_addr) + " got " + hex2(data_byte) + " = " + self.instr_set.get_instr(hex2(data_byte),self.cur_addr,self.mem.mem) )
+            if self.stop_on_idle:
+              if data_byte == 0:
+                #break
+                pass
+
+    #if self.dump_data:
+    #  print_data ( "1" ) # notCLEAR is 0
+    #if self.dump_js and (js_data_file != None):
+    #  js_data_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
+
+
+  def half_clock_only(self, n):
+    # Just clock with no updates
+    for i in range(n):
+      self.clock.toggle()
+      time.sleep ( self.clock_time )
+
   def half_clock(self, n):
     for i in range(n):
       self.clock.toggle()
       time.sleep ( self.clock_time )
+      self.update()
+      # time.sleep ( self.clock_time )
       self.num_half_clocks += 1
 
   def full_clock(self, n):
     for i in range(n):
-      self.clock.toggle()
-      time.sleep ( self.clock_time )
-      self.num_half_clocks += 1
-      self.clock.toggle()
-      time.sleep ( self.clock_time )
-      self.num_half_clocks += 1
+      self.half_clock(1)
+      self.half_clock(1)
 
   def ensure_clock(self, state):
     if self.clock.get_val() != state:
-      self.clock.toggle()
-      time.sleep ( self.clock_time )
-      self.num_half_clocks += 1
+      self.half_clock(1)
 
   def ensure_sc0(self, state):
     while self.sc0.get_val() != state:
-      self.clock.toggle()
-      time.sleep ( self.clock_time )
-      self.num_half_clocks += 1
+      self.half_clock(1)
 
   def cycle_sc0(self, n):
     initial_sc0 = self.sc0.get_val()
@@ -329,32 +674,28 @@ class cdp1802:
     for i in range(n):
       # Start by moving to the next high value of TPB
       while not self.tpb.get_val():
-        self.clock.toggle()
-        time.sleep ( self.clock_time )
-        self.num_half_clocks += 1
+        self.half_clock(1)
       # Look for the transition of TPB from high to low
       while self.tpb.get_val():
-        self.clock.toggle()
-        time.sleep ( self.clock_time )
-        self.num_half_clocks += 1
+        self.half_clock(1)
       # Should be at the edge of next machine cycle
 
   def not_clear_low(self):
     self.nclear.set_val ( False )
-    time.sleep ( 0.01 )
+    time.sleep ( 0.00001 )
     # It's not clear whether it makes sense to zero here
     self.num_half_clocks = 0
 
   def not_clear_high(self):
     self.nclear.set_val ( True )
-    time.sleep ( 0.01 )
+    time.sleep ( 0.00001 )
     # It's not clear whether it makes sense to zero here
     self.num_half_clocks = 0
 
 
 class instruction_set:
   def __init__ ( self ):
-    self.self.inst_proc_table = [ # InstructionName, OpCode, NumAdditionalBytes
+    self.inst_proc_table = [ # InstructionName, OpCode, NumAdditionalBytes
       [ "IDL",  "00", 0 ],
       [ "LDN",  "0N", 0 ],
       [ "INC",  "1N", 0 ],
@@ -490,14 +831,89 @@ class instruction_set:
 
 
 ##### Define the 1802 CPU #####
-cpu = cdp1802(0.01)
+cpu = cdp1802(0.0001)  # This sets the clock time (not same as sleep settling time)
+
+##### Process Command Line Parameters #####
+
+def command_help():
+  print ( "Command Line Parameters:" )
+  print ( "  h=hex  to run plain hex code from command" )
+  print ( "  f=file to run a hex file of several formats" )
+  print ( "  n=#    to specify number of half-clocks to run" )
+  print ( "  d      to dump every pin while running" )
+  print ( "  t      to trace execution while running" )
+  print ( "  dm     to dump non-zero memory after run" )
+  print ( "  js     to save output in data.js" )
+  print ( "  p      to drop into Python after running" )
+  print ( "  help   to print this help message and exit" )
+  print ( "Useful functions from Python:" )
+  print ( "  h()     to show this help text" )
+  print ( "  help()  to get Python help" )
+  print ( "  reset() to reset the 1802" )
+  print ( "  run(n)  to run the 1802 by n half-clocks" )
+  print ( "  mem()   to show first 16 plus all non-zero bytes" )
+  print ( "  ram(start[,num[,any]]) to show selected memory" )
+  print ( "  find(val,start,num,inv) to find values in memory" )
+  print ( "Supported File Formats (autodetected from file):" )
+  print ( "  .hex - Intel Hex Format (address and data)" )
+  print ( "  .ahx - Address:Data Hex Format (address and data)" )
+  print ( "  .phx - Plain Hex Format (loaded at address 0)" )
+  print ( "Use up and down arrows in Python for history" )
+  print ( "Use Control-D to exit Python" )
+  print ( "Use Control-C to exit Run_1802" )
+
+if len(sys.argv) > 1:
+  # print ( "Arguments: " + str(sys.argv) )
+  for arg in sys.argv:
+    # print ("  " + str(arg))
+
+    if arg == "help":
+      command_help()
+      sys.exit ( 0 )
+
+    #if arg == "d":
+    #  dump_data = True
+
+    if arg == "t":
+      cpu.trace_exec = True
+
+    #if arg == "p":
+    #  open_console = True
+
+    #if arg.startswith("c="):
+    #  clock_time = float(arg[2:])
+      # print ( "Arg sets clock_time = " + str(clock_time) )
+
+    #if arg.startswith("n="):
+    #  num_clocks = int(arg[2:])
+    #  # print ( "Arg sets num_clocks = " + str(num_clocks) )
+
+    #if arg == "js":
+    #  dump_file = open ( "data.js", "w" )
+
+    #if arg == "dm":
+    #  dump_mem = True
+
+    src_txt = None
+
+    if arg.startswith("f="):
+      # Read a program from a file
+      f = open(arg[2:],"r")
+      src_txt = f.read()
+      f.close()
+    elif arg.startswith("h="):
+      # Read a program as hex a command option
+      src_txt = arg[2:]
+
+    if (src_txt != None) and (len(src_txt) > 0):
+      cpu.mem.load ( src_txt )
 
 
 ##### Begin Interactive Mode #####
 
 cmd = ''
 lastcmdline = ''
-while (cmd.lower() != 'x') and (cmd.lower() != 'q') and (cmd.lower() != 'x'):
+while (cmd.lower() != 'x') and (cmd.lower() != 'q'):
   cmdline = get_input ( "> " ).strip()
   if len(cmdline) <= 0:
     # print ( "Repeating last command" )
@@ -512,6 +928,7 @@ while (cmd.lower() != 'x') and (cmd.lower() != 'q') and (cmd.lower() != 'x'):
         print ( " p - Drop into Python (exit Python with Control-D)" )
         print ( " r - Reset the 1802" )
         print ( " d - Dump pin state of the 1802" )
+        print ( " g - Get the internal state of the 1802" )
         print ( " t l - Toggle clock to low (only toggle if needed)" )
         print ( " t h - Toggle clock to high (only toggle if needed)" )
         print ( " t [n] - Toggle clock n times (essentially n half clocks)" )
@@ -520,6 +937,11 @@ while (cmd.lower() != 'x') and (cmd.lower() != 'q') and (cmd.lower() != 'x'):
         print ( " s h - Toggle clock until State Code 0 is high (only as needed)" )
         print ( " s [n] - Cycle State Code 0 n times (essentially n instructions)" )
         print ( " m [n] - Execute next n machine cycles (based off of TPB)" )
+        print ( " [addr] - Show memory at address addr" )
+        print ( " [a1-a2] - Show memory from address a1 to address a2" )
+        print ( " [addr] = # # ... # - Set memory starting at address addr" )
+        print ( " [a1-a2] = # # ... # - Set memory from address a1 to address a2" )
+        print ( " f name - Load file name into RAM" )
 
       elif cmd[0].lower() == 'p':
         __import__('code').interact(local={k: v for ns in (globals(), locals()) for k, v in ns.items()})
@@ -530,6 +952,9 @@ while (cmd.lower() != 'x') and (cmd.lower() != 'q') and (cmd.lower() != 'x'):
       elif cmd[0].lower() == 'd':
         print ( cpu.get_vheader_string() )
         print ( cpu.get_data_string() )
+
+      elif cmd[0].lower() == 'g':
+        cpu.get_state()
 
       elif cmd[0].lower() == 't':
         if cmd.lower() == 't':
@@ -579,49 +1004,53 @@ while (cmd.lower() != 'x') and (cmd.lower() != 'q') and (cmd.lower() != 'x'):
           n = int ( cmd[1:].strip() )
           cpu.machine_cycle(n)
 
+      elif cmd[0].lower() == 'f':
+        fname = cmd[1:].strip()
+        if len(fname) > 0:
+          f = open(fname,"r")
+          src_txt = f.read()
+          f.close()
+          if len(src_txt) > 0:
+            cpu.mem.load ( src_txt )
+
+      elif cmd[0] == '[':
+        if "=" in cmd:
+          # Assign values to memory
+          parts = cmd.split('=')
+          # First split the right side
+          vals = [int(v,16) for v in parts[1].split()]
+          # Now determine if the left side is a single address or a range
+          if '-' in parts[0]:
+            # A target range means copy repeatedly to fill range
+            a1 = int ( parts[0].strip().split("-")[0][1:], 16 )
+            a2 = int ( parts[0].strip().split("-")[1][0:-1], 16 )
+            v = 0
+            for a in range(a1,a2+1):
+              cpu.mem.mem[a] = vals[(a-a1) % len(vals)]
+          else:
+            # A target address means copy once
+            a = int ( parts[0].strip()[1:-1], 16 )
+            for i in range(len(vals)):
+              cpu.mem.mem[a+i] = vals[i]
+        elif "-" in cmd:
+          # Show a range of memory
+          a1 = int ( cmd.strip().split("-")[0][1:], 16 )
+          a2 = int ( cmd.strip().split("-")[1][0:-1], 16 )
+          for a in range(a1,a2+1):
+            print ( "  Mem[" + hex(a)[2:] + "] = " + hex(cpu.mem.mem[a])[2:] )
+        else:
+          # Show a single address
+          a = int ( cmd.strip()[1:-1], 16 )
+          print ( "  Mem[" + hex(a)[2:] + "] = " + hex(cpu.mem.mem[a])[2:] )
+
       else:
-        print ( "Unknown command: " + cmd )
+        if (cmd.lower() != 'x') and (cmd.lower() != 'q'):
+          print ( "Unknown command: " + cmd )
 
     lastcmdline = cmdline
 
 
-
-##### Process Command Line Parameters #####
-
-dump_data = False
-trace_exec = False
-dump_mem = False
-dump_file = None
-num_clocks = 1000000
-clock_time = 2 * settling_sleep_time
-open_console = False
-
-def h():
-  print ( "Command Line Parameters:" )
-  print ( "  h=hex  to run plain hex code from command" )
-  print ( "  f=file to run a hex file of several formats" )
-  print ( "  n=#    to specify number of half-clocks to run" )
-  print ( "  d      to dump every pin while running" )
-  print ( "  t      to trace execution while running" )
-  print ( "  dm     to dump non-zero memory after run" )
-  print ( "  js     to save output in data.js" )
-  print ( "  p      to drop into Python after running" )
-  print ( "  help   to print this help message and exit" )
-  print ( "Useful functions from Python:" )
-  print ( "  h()     to show this help text" )
-  print ( "  help()  to get Python help" )
-  print ( "  reset() to reset the 1802" )
-  print ( "  run(n)  to run the 1802 by n half-clocks" )
-  print ( "  mem()   to show first 16 plus all non-zero bytes" )
-  print ( "  ram(start[,num[,any]]) to show selected memory" )
-  print ( "  find(val,start,num,inv) to find values in memory" )
-  print ( "Supported File Formats (autodetected from file):" )
-  print ( "  .hex - Intel Hex Format (address and data)" )
-  print ( "  .ahx - Address:Data Hex Format (address and data)" )
-  print ( "  .phx - Plain Hex Format (loaded at address 0)" )
-  print ( "Use up and down arrows in Python for history" )
-  print ( "Use Control-D to exit Python" )
-  print ( "Use Control-C to exit Run_1802" )
+'''
 
 def split_code_text(s):
   # Parse a string of hex with possible embedded spaces
@@ -861,9 +1290,11 @@ def run ( num_clocks ):
       tpb_hi = 1
     else:
       if tpb_hi:
+        # This is the falling edge of TPB
         tpb_hi = 0
         if trace_exec:
           if not sc0.get_val():
+            # SC0 low means a fetch
             db7 = d7.get_val()
             db6 = d6.get_val()
             db5 = d5.get_val()
@@ -928,7 +1359,7 @@ if dump_data or ( dump_file != None ):
   if dump_file != None:
     dump_file.write ( get_js_header_string() )
 
-
+'''
 
 '''
 # Toggle the clock to observe the processor in Reset
