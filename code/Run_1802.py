@@ -275,7 +275,7 @@ def split_code_text(s):
         # Remove the first digit to make it even
         part = part[1:]
       # The part string now has pairs of digits
-      for i in range(len(part)/2):
+      for i in range(len(part)//2):
         mem.append ( int(part[2*i:(2*i)+2],16) )
   # print ( "Newmem returning " + str(mem) )
   return ( mem )
