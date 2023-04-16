@@ -48,7 +48,7 @@
 #    Vss 20      21 /EF4
 
 CLOCK   = 26
-NCLEAR  = 19
+NCLEAR  = 22
 
 NDMAI   = 21
 NINT    = 20
@@ -78,4 +78,4 @@ D5      = 13
 D6      = 14
 D7      = 15
 
-QOUT    = 22
+QOUT    = 19
