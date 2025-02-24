@@ -74,6 +74,11 @@ import math
 from signal import signal, SIGINT
 import RPi.GPIO as GPIO
 
+py2 = False
+if sys.version.split(".")[0] == '2':
+  py2 = True
+
+
 def ctlc_handler ( sig, frame ):
   # print ( "\nExiting after Control-C\n" )
   exit ( 0 )
@@ -223,24 +228,33 @@ memory[3] = 0x00
 
 ##### Process Command Line Parameters #####
 
-dump_data = False
-dump_js = False
+dump_pins = False
+dump_pins_js = False
 js_data_file = None
 trace_exec = False
+show_out = False
+stop_on_idle = False
 dump_mem = False
+io_as_hex = False
 num_clocks = 1000000
 clock_time = 2 * settling_sleep_time
 open_console = False
+run_gui = False
 
 def h():
   print ( "Command Line Parameters:" )
-  print ( "  h=hex  to run plain hex code from command" )
   print ( "  f=file to run a hex file of several formats" )
-  print ( "  n=#    to specify number of half-clocks to run" )
+  print ( "  h=hex  to run plain hex code from command" )
+  print ( "  n=#    to specify number of half-clocks to run (-1 to IDL)" )
+  print ( "  c=#    to specify clock time (" + str(clock_time) + ")" )
+  print ( "  o      to show output while running" )
   print ( "  d      to dump every pin while running" )
   print ( "  t      to trace execution while running" )
   print ( "  dm     to dump non-zero memory after run" )
   print ( "  js     to save output in data.js" )
+  print ( "  js=fn  to save output in file fn" )
+  print ( "  x      to use hex for I/O" )
+  print ( "  gui    to run the Graphical User Interface" )
   print ( "  p      to drop into Python after running" )
   print ( "  help   to print this help message and exit" )
   print ( "Useful functions from Python:" )
@@ -275,7 +289,7 @@ def split_code_text(s):
         # Remove the first digit to make it even
         part = part[1:]
       # The part string now has pairs of digits
-      for i in range(len(part)//2):
+      for i in range(int(len(part)/2)):
         mem.append ( int(part[2*i:(2*i)+2],16) )
   # print ( "Newmem returning " + str(mem) )
   return ( mem )
@@ -289,8 +303,17 @@ if len(sys.argv) > 1:
       h()
       sys.exit ( 0 )
 
+    if arg == "o":
+      show_out = True
+
     if arg == "d":
-      dump_data = True
+      dump_pins = True
+
+    if arg == "gui":
+      run_gui = True
+
+    if arg == "x":
+      io_as_hex = True
 
     if arg == "t":
       trace_exec = True
@@ -304,15 +327,18 @@ if len(sys.argv) > 1:
 
     if arg.startswith("n="):
       num_clocks = int(arg[2:])
+      if num_clocks < 0:
+        stop_on_idle = True
+        num_clocks = 1000000
       # print ( "Arg sets num_clocks = " + str(num_clocks) )
 
     if arg == "js":
       js_data_file = open ( "data.js", "w" )
-      dump_js = True
+      dump_pins_js = True
 
     if arg.startswith("js="):
       js_data_file = open ( arg[3:], "w" )
-      dump_js = True
+      dump_pins_js = True
 
     if arg == "dm":
       dump_mem = True
@@ -498,11 +524,30 @@ def get_data_string ( ncl ):
           str(qout.get_val()))
   return ( s )
 
+text_so_far = ''
+text_area = None
+def append_to_text_area ( s ):
+  global text_so_far
+  global text_area
+  #if not py2:
+  #  s = s.decode("utf-8")
+  line = str(s.strip())
+  text_so_far = text_so_far + s + "\n"
+  if text_area != None:
+    text_area.insert ( tk.END, s+"\n")
+    text_area.see(tk.END)
+    text_area.update()
+
 def print_data(ncl):
+  global dump_pins_js
+  global js_data_file
+  global run_gui
   s = get_data_string(ncl)
-  if dump_js and (js_data_file != None):
+  if dump_pins_js and (js_data_file != None):
     js_data_file.write ( " + \"" + s + "\\n\"\n" );
   print ( s )
+  if run_gui:
+    append_to_text_area ( s )
 
 addr_hi = 0
 n2_hi = 0
@@ -533,7 +578,11 @@ def not_clear_high():
   nclear.set_val ( True )
   time.sleep ( 0.01 )
 
+'''
 def reset():
+  reset_1802()
+  return
+
   global nclear
   global clock
 
@@ -550,97 +599,109 @@ def reset():
   # Release the "Reset" line to let the 1802 start running
   nclear.set_val ( True )
   time.sleep ( 0.01 )
-
+'''
 
 inst_proc_table = [ # InstructionName, OpCode, NumAdditionalBytes
-	[ "IDL",  "00", 0 ],
-	[ "LDN",  "0N", 0 ],
-	[ "INC",  "1N", 0 ],
-	[ "DEC",  "2N", 0 ],
-	[ "BR",   "30", 1 ],
-	[ "BQ",   "31", 1 ],
-	[ "BZ",   "32", 1 ],
-	[ "BPZ",  "33", 1 ],
-	[ "BGE",  "33", 1 ],
-	[ "BDF",  "33", 1 ],
-	[ "B1",   "34", 1 ],
-	[ "B2",   "35", 1 ],
-	[ "B3",   "36", 1 ],
-	[ "B4",   "37", 1 ],
-	[ "NBR",  "38", 0 ],
-	[ "SKP",  "38", 0 ],
-	[ "BNQ",  "39", 1 ],
-	[ "BNZ",  "3A", 1 ],
-	[ "BL",   "3B", 1 ],
-	[ "BM",   "3B", 1 ],
-	[ "BNF",  "3B", 1 ],
-	[ "BN1",  "3C", 1 ],
-	[ "BN2",  "3D", 1 ],
-	[ "BN3",  "3E", 1 ],
-	[ "BN4",  "3F", 1 ],
-	[ "LDA",  "4N", 0 ],
-	[ "STR",  "5N", 0 ],
-	[ "IRX",  "60", 0 ],
-	[ "OUT",  "61", 0 ],
-	[ "ILL",  "68", 0 ],
-	[ "INP",  "69", 0 ],
-	[ "RET",  "70", 0 ],
-	[ "DIS",  "71", 0 ],
-	[ "LDXA", "72", 0 ],
-	[ "STXD", "73", 0 ],
-	[ "ADC",  "74", 0 ],
-	[ "SDB",  "75", 0 ],
-	[ "RSHR", "76", 0 ],
-	[ "SHRC", "76", 0 ],
-	[ "SMB",  "77", 0 ],
-	[ "SAV",  "78", 0 ],
-	[ "MARK", "79", 0 ],
-	[ "REQ",  "7A", 0 ],
-	[ "SEQ",  "7B", 0 ],
-	[ "ADCI", "7C", 1 ],
-	[ "SDBI", "7D", 1 ],
-	[ "RSHL", "7E", 0 ],
-	[ "SHLC", "7E", 0 ],
-	[ "SMBI", "7F", 1 ],
-	[ "GLO",  "8N", 0 ],
-	[ "GHI",  "9N", 0 ],
-	[ "PLO",  "AN", 0 ],
-	[ "PHI",  "BN", 0 ],
-	[ "LBR",  "C0", 2 ],
-	[ "LBQ",  "C1", 2 ],
-	[ "LBZ",  "C2", 2 ],
-	[ "LBDF", "C3", 2 ],
-	[ "NOP",  "C4", 0 ],
-	[ "LSNQ", "C5", 0 ],
-	[ "LSNZ", "C6", 0 ],
-	[ "LSNF", "C7", 0 ],
-	[ "NLBR", "C8", 0 ],
-	[ "LSKP", "C8", 0 ],
-	[ "LBNQ", "C9", 2 ],
-	[ "LBNZ", "CA", 2 ],
-	[ "LBNF", "CB", 2 ],
-	[ "LSIE", "CC", 0 ],
-	[ "LSQ",  "CD", 0 ],
-	[ "LSZ",  "CE", 0 ],
-	[ "LSDF", "CF", 0 ],
-	[ "SEP",  "DN", 0 ],
-	[ "SEX",  "EN", 0 ],
-	[ "LDX",  "F0", 0 ],
-	[ "OR",   "F1", 0 ],
-	[ "AND",  "F2", 0 ],
-	[ "XOR",  "F3", 0 ],
-	[ "ADD",  "F4", 0 ],
-	[ "SD",   "F5", 0 ],
-	[ "SHR",  "F6", 0 ],
-	[ "SM",   "F7", 0 ],
-	[ "LDI",  "F8", 1 ],
-	[ "ORI",  "F9", 1 ],
-	[ "ANI",  "FA", 1 ],
-	[ "XRI",  "FB", 1 ],
-	[ "ADI",  "FC", 1 ],
-	[ "SDI",  "FD", 1 ],
-	[ "SHL",  "FE", 0 ],
-	[ "SMI",  "FF", 1 ]
+	[ "IDL",   "00", 0 ],
+	[ "LDN",   "0N", 0 ],
+	[ "INC",   "1N", 0 ],
+	[ "DEC",   "2N", 0 ],
+	[ "BR",    "30", 1 ],
+	[ "BQ",    "31", 1 ],
+	[ "BZ",    "32", 1 ],
+	[ "BPZ",   "33", 1 ],
+	[ "BGE",   "33", 1 ],
+	[ "BDF",   "33", 1 ],
+	[ "B1",    "34", 1 ],
+	[ "B2",    "35", 1 ],
+	[ "B3",    "36", 1 ],
+	[ "B4",    "37", 1 ],
+	[ "NBR",   "38", 0 ],
+	[ "SKP",   "38", 0 ],
+	[ "BNQ",   "39", 1 ],
+	[ "BNZ",   "3A", 1 ],
+	[ "BL",    "3B", 1 ],
+	[ "BM",    "3B", 1 ],
+	[ "BNF",   "3B", 1 ],
+	[ "BN1",   "3C", 1 ],
+	[ "BN2",   "3D", 1 ],
+	[ "BN3",   "3E", 1 ],
+	[ "BN4",   "3F", 1 ],
+	[ "LDA",   "4N", 0 ],
+	[ "STR",   "5N", 0 ],
+	[ "IRX",   "60", 0 ],
+	[ "OUT1",  "61", 0 ],
+	[ "OUT2",  "62", 0 ],
+	[ "OUT3",  "63", 0 ],
+	[ "OUT4",  "64", 0 ],
+	[ "OUT5",  "65", 0 ],
+	[ "OUT6",  "66", 0 ],
+	[ "OUT7",  "67", 0 ],
+	[ "ILL",   "68", 0 ],
+	[ "INP1",  "69", 0 ],
+	[ "INP2",  "6A", 0 ],
+	[ "INP3",  "6B", 0 ],
+	[ "INP4",  "6C", 0 ],
+	[ "INP5",  "6D", 0 ],
+	[ "INP6",  "6E", 0 ],
+	[ "INP7",  "6F", 0 ],
+	[ "RET",   "70", 0 ],
+	[ "DIS",   "71", 0 ],
+	[ "LDXA",  "72", 0 ],
+	[ "STXD",  "73", 0 ],
+	[ "ADC",   "74", 0 ],
+	[ "SDB",   "75", 0 ],
+	[ "RSHR",  "76", 0 ],
+	[ "SHRC",  "76", 0 ],
+	[ "SMB",   "77", 0 ],
+	[ "SAV",   "78", 0 ],
+	[ "MARK",  "79", 0 ],
+	[ "REQ",   "7A", 0 ],
+	[ "SEQ",   "7B", 0 ],
+	[ "ADCI",  "7C", 1 ],
+	[ "SDBI",  "7D", 1 ],
+	[ "RSHL",  "7E", 0 ],
+	[ "SHLC",  "7E", 0 ],
+	[ "SMBI",  "7F", 1 ],
+	[ "GLO",   "8N", 0 ],
+	[ "GHI",   "9N", 0 ],
+	[ "PLO",   "AN", 0 ],
+	[ "PHI",   "BN", 0 ],
+	[ "LBR",   "C0", 2 ],
+	[ "LBQ",   "C1", 2 ],
+	[ "LBZ",   "C2", 2 ],
+	[ "LBDF",  "C3", 2 ],
+	[ "NOP",   "C4", 0 ],
+	[ "LSNQ",  "C5", 0 ],
+	[ "LSNZ",  "C6", 0 ],
+	[ "LSNF",  "C7", 0 ],
+	[ "NLBR",  "C8", 0 ],
+	[ "LSKP",  "C8", 0 ],
+	[ "LBNQ",  "C9", 2 ],
+	[ "LBNZ",  "CA", 2 ],
+	[ "LBNF",  "CB", 2 ],
+	[ "LSIE",  "CC", 0 ],
+	[ "LSQ",   "CD", 0 ],
+	[ "LSZ",   "CE", 0 ],
+	[ "LSDF",  "CF", 0 ],
+	[ "SEP",   "DN", 0 ],
+	[ "SEX",   "EN", 0 ],
+	[ "LDX",   "F0", 0 ],
+	[ "OR",    "F1", 0 ],
+	[ "AND",   "F2", 0 ],
+	[ "XOR",   "F3", 0 ],
+	[ "ADD",   "F4", 0 ],
+	[ "SD",    "F5", 0 ],
+	[ "SHR",   "F6", 0 ],
+	[ "SM",    "F7", 0 ],
+	[ "LDI",   "F8", 1 ],
+	[ "ORI",   "F9", 1 ],
+	[ "ANI",   "FA", 1 ],
+	[ "XRI",   "FB", 1 ],
+	[ "ADI",   "FC", 1 ],
+	[ "SDI",   "FD", 1 ],
+	[ "SHL",   "FE", 0 ],
+	[ "SMI",   "FF", 1 ]
 ]
 
 
@@ -666,13 +727,13 @@ def get_instr(hx,addr):
           if (hx == '65'): best_instr = 'OUT5'; best_instr_index = i;
           if (hx == '66'): best_instr = 'OUT6'; best_instr_index = i;
           if (hx == '67'): best_instr = 'OUT7'; best_instr_index = i;
-          if (hx == '69'): best_instr = 'IN1'; best_instr_index = i;
-          if (hx == '6A'): best_instr = 'IN2'; best_instr_index = i;
-          if (hx == '6B'): best_instr = 'IN3'; best_instr_index = i;
-          if (hx == '6C'): best_instr = 'IN4'; best_instr_index = i;
-          if (hx == '6D'): best_instr = 'IN5'; best_instr_index = i;
-          if (hx == '6E'): best_instr = 'IN6'; best_instr_index = i;
-          if (hx == '6F'): best_instr = 'IN7'; best_instr_index = i;
+          if (hx == '69'): best_instr = 'INP1'; best_instr_index = i;
+          if (hx == '6A'): best_instr = 'INP2'; best_instr_index = i;
+          if (hx == '6B'): best_instr = 'INP3'; best_instr_index = i;
+          if (hx == '6C'): best_instr = 'INP4'; best_instr_index = i;
+          if (hx == '6D'): best_instr = 'INP5'; best_instr_index = i;
+          if (hx == '6E'): best_instr = 'INP6'; best_instr_index = i;
+          if (hx == '6F'): best_instr = 'INP7'; best_instr_index = i;
         elif (inst_proc_table[i][1][1].upper() == 'N'):
           best_instr = inst_proc_table[i][0].upper() + " " + hx[1].upper();
           best_instr_index = i;
@@ -705,6 +766,9 @@ def run ( num_clocks ):
   global n2_hi
   global out4_val
   global tpb_hi
+  global run_gui
+  global dump_pins
+  global dump_pins_js
 
   for i in range(num_clocks):
     clock.toggle()
@@ -741,11 +805,21 @@ def run ( num_clocks ):
     else:
       if n2_hi != 0:
         # n2 had been high, but just went low, so output
-        print ( str(out4_val) )
+        if show_out:
+          if io_as_hex:
+            xout = hex(out4_val).upper()[2:]
+            if len(xout) < 2:
+              xout = '0' + xout
+            print ( xout )
+            if run_gui:
+              append_to_text_area ( xout )
+          else:
+            print ( str(out4_val) )
+            if run_gui:
+              append_to_text_area ( str(out4_val) )
         # Reset  n2_hi and out4_val
         n2_hi = 0
         out4_val = None
-
 
     # Get /MRD and /MRW for later use
     n_mrd = nmrd.get_val()
@@ -790,8 +864,9 @@ def run ( num_clocks ):
     else:
       if tpb_hi:
         tpb_hi = 0
-        if trace_exec:
+        if trace_exec or stop_on_idle:
           if not sc0.get_val():
+            # Get the value on the data bus
             db7 = d7.get_val()
             db6 = d6.get_val()
             db5 = d5.get_val()
@@ -801,11 +876,18 @@ def run ( num_clocks ):
             db1 = d1.get_val()
             db0 = d0.get_val()
             data_byte = (db7 << 7) | (db6 << 6) | (db5 << 5) | (db4 << 4) | (db3 << 3) | (db2 << 2) | (db1 << 1) | db0
-            print ( "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte),addr) )
+            if trace_exec:
+              trace_str = "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte),addr)
+              print ( trace_str )
+              if run_gui:
+                append_to_text_area ( trace_str )
+            if stop_on_idle:
+              if data_byte == 0:
+                break
 
-    if dump_data:
+    if dump_pins:
       print_data ( "1" ) # notCLEAR is 0
-    if dump_js and (js_data_file != None):
+    if dump_pins_js and (js_data_file != None):
       js_data_file.write ( " + \"" + get_data_string ( "1" ) + "\\n\"\n" );
 
     time.sleep ( clock_time )
@@ -848,48 +930,198 @@ def mem ():
       print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
   print ( "-------------------" )
 
-# Save the "dump_data" and "dump_js" flags and disable for this section
-saved_dump_data = dump_data
-saved_dump_js = dump_js
-dump_data = False
-dump_js = False
-# Release the "Reset" line to let the 1802 start running
-nclear.set_val ( True )
-time.sleep ( 0.1 )
-# Run just the first few machine cycles to create a repeatable state
-run ( (9+5) * 2 )
-time.sleep ( 0.1 )
-# Reassert the "Reset" line to reset the 1802
-nclear.set_val ( False )
-time.sleep ( 0.1 )
-# Restore the "dump_data" and jump_js flags
-dump_data = saved_dump_data
-dump_js = saved_dump_js
 
-# Print the header as appropriate for this run
-if dump_data:
-  print ( get_header_string() + "\n" )
-if dump_js and (js_data_file != None):
-  js_data_file.write ( get_js_header_string() )
+def gui_reset(*args):
+  reset_1802()
 
+def gui_half_clock(*args):
+  run ( 1 )
 
-# Toggle the clock to observe the processor in Reset
-for i in range(32):
-  clock.toggle()
-  if dump_data:
-    print_data ( "0" ) # notCLEAR is 0
-  if dump_js and (js_data_file != None):
-    js_data_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
-  time.sleep ( clock_time )
+def gui_full_clock(*args):
+  run ( 2 )
 
+def gui_8_clocks(*args):
+  run ( 2*8 )
 
-# Release the "Reset" line to let the 1802 start running
-nclear.set_val ( True )
-time.sleep ( 0.1 )
+def gui_N_half_clocks(*args):
+  run ( int(gui_num_clocks.get()) )
 
-# Enter a loop to toggle the clock to run the program
-print ( "Running " + str(num_clocks) + " clocks" )
-run ( num_clocks )
+def gui_clear(*args):
+  global text_area
+  text_area.delete ( 1.0, tk.END )
+
+def gui_debug(*args):
+  print ( "Entering Python Console. Use Control-D to exit." )
+  __import__('code').interact(local={k: v for ns in (globals(), locals()) for k, v in ns.items()})
+
+def gui_dump_changed (*args):
+  global dump_pins_var
+  global dump_pins
+  if dump_pins_var.get() != 0:
+    dump_pins = True
+    print ( "Setting dump_pins to True" )
+  else:
+    dump_pins = False
+    print ( "Setting dump_pins to False" )
+
+def gui_trace_changed (*args):
+  global trace_exec_var
+  global trace_exec
+  if trace_exec_var.get() != 0:
+    trace_exec = True
+    print ( "Setting trace_exec to True" )
+  else:
+    trace_exec = False
+    print ( "Setting trace_exec to False" )
+
+def gui_out_changed (*args):
+  global show_out_var
+  global show_out
+  if show_out_var.get() != 0:
+    show_out = True
+    print ( "Setting show_out to True" )
+  else:
+    show_out = False
+    print ( "Setting show_out to False" )
+
+def reset_1802():
+  global dump_pins
+  global dump_pins_js
+  global nclear
+  # print ( "Reset 1802" )
+
+  # Assert the "Reset" line to reset the 1802
+  nclear.set_val ( False )
+  time.sleep ( 0.1 )
+
+  # Print the header as appropriate for this run
+  if dump_pins:
+    hs = get_header_string()
+    print ( hs )
+    append_to_text_area ( hs )
+  if dump_pins_js and (js_data_file != None):
+    js_data_file.write ( get_js_header_string() )
+
+  # Toggle the clock to observe the processor in Reset
+  for i in range(32):
+    clock.toggle()
+    if dump_pins:
+      print_data ( "0" ) # notCLEAR is 0
+    if dump_pins_js and (js_data_file != None):
+      js_data_file.write ( " + \"" + get_data_string ( "0" ) + "\\n\"\n" );
+    time.sleep ( clock_time )
+
+  # Release the "Reset" line to let the 1802 start running
+  nclear.set_val ( True )
+  time.sleep ( 0.1 )
+
+if run_gui:
+  if py2:
+    import Tkinter as tk
+    from Tkinter import *
+  else:
+    import tkinter as tk
+    from tkinter import *
+    from tkinter.ttk import *
+  root = Tk()
+  root.title("Run_1802")
+
+  # Create a Frame
+  next_col = 0
+  if py2:
+    mainframe = Frame(root)
+  else:
+    mainframe = Frame(root,padding="3 3 12 12")
+  mainframe.grid ( column=next_col, row=0, sticky=(N,W,E,S))
+  root.columnconfigure(next_col,weight=1)
+  root.rowconfigure(next_col,weight=1)
+
+  # Create a button to reset the 1802
+  next_col += 1
+  Button (mainframe, text="Reset", command=gui_reset).grid(column=next_col, row=1)
+
+  # Create the labels
+  next_col += 1
+  Label(mainframe, text="Run:").grid(column=next_col, row=1, sticky=E)
+
+  # Create a button for a half clock
+  next_col += 1
+  Button (mainframe, text="Half Clock", command=gui_half_clock).grid(column=next_col, row=1)
+
+  # Create a button for a Full clock
+  next_col += 1
+  Button (mainframe, text="Full Clock", command=gui_full_clock).grid(column=next_col, row=1)
+
+  # Create a button for 8 Clocks
+  next_col += 1
+  Button (mainframe, text="8 clocks", command=gui_8_clocks).grid(column=next_col, row=1)
+
+  # Create a variable and a text box for the number of clocks
+  next_col += 1
+  gui_num_clocks = StringVar()
+  gui_num_clocks_entry = Entry(mainframe, width=4, textvariable=gui_num_clocks)
+  gui_num_clocks_entry.grid(column=next_col, row=1, sticky=(W,E))
+  gui_num_clocks.set(str(num_clocks))
+
+  # Create a button for N Clocks
+  next_col += 1
+  Button (mainframe, text="Half Clocks", command=gui_N_half_clocks).grid(column=next_col, row=1)
+
+  # Create a variable and a check box for showing output
+  next_col += 1
+  show_out_var = IntVar()
+  show_out_var.set(int(show_out))
+  show_out_check = Checkbutton(mainframe, variable=show_out_var, text="Out", command=gui_out_changed)
+  show_out_check.grid(column=next_col,row=1)
+
+  # Create a variable and a check box for dumping trace data
+  next_col += 1
+  trace_exec_var = IntVar()
+  trace_exec_var.set(int(trace_exec))
+  trace_exec_check = Checkbutton(mainframe, variable=trace_exec_var, text="Trace", command=gui_trace_changed)
+  trace_exec_check.grid(column=next_col,row=1)
+
+  # Create a variable and a check box for dumping pin data
+  next_col += 1
+  dump_pins_var = IntVar()
+  dump_pins_var.set(int(dump_pins))
+  dump_pins_check = Checkbutton(mainframe, variable=dump_pins_var, text="Pins", command=gui_dump_changed)
+  dump_pins_check.grid(column=next_col,row=1)
+
+  # Create a button for clearing the output display
+  next_col += 1
+  Button (mainframe, text="Clear", command=gui_clear).grid(column=next_col, row=1)
+
+  # Create a button for debug
+  next_col += 1
+  Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
+
+  # Create a text area
+  text_area = Text (mainframe, width=120, height=50)
+  text_area.grid ( column=1, row=2, columnspan=next_col, sticky=(N,W,E,S) )
+  #text_area['state'] = "disabled"
+
+  # Adjust all children
+  for child in mainframe.winfo_children():
+    child.grid_configure(padx=5, pady=5)
+
+  # Reset the 1802 with whatever logging has been put in place
+  reset_1802()
+
+  # gui_num_clocks_entry.focus()
+  # root.bind
+  # Enter the main loop which will run until exit
+  root.mainloop()
+
+else:
+  # Reset the 1802 with whatever logging has been put in place
+  reset_1802()
+  # Enter a loop to toggle the clock to run the program
+  if stop_on_idle:
+    print ( "Running until idle (or " + str(num_clocks) + " clocks)" )
+  else:
+    print ( "Running " + str(num_clocks) + " clocks" )
+  run ( num_clocks )
 
 
 if dump_mem:
