@@ -89,11 +89,10 @@ if FakeGPIO:
 else:
   import RPi.GPIO as GPIO
 
-
-def ctlc_handler ( sig, frame ):
-  # print ( "\nExiting after Control-C\n" )
-  exit ( 0 )
-signal (SIGINT, ctlc_handler)
+#def ctlc_handler ( sig, frame ):
+#  # print ( "\nExiting after Control-C\n" )
+#  exit ( 0 )
+#signal (SIGINT, ctlc_handler)
 
 # The settling time is intended to ensure that
 # any GPIO changes are completed before moving
@@ -1038,8 +1037,20 @@ if run_gui:
     import tkinter as tk
     from tkinter import *
     from tkinter.ttk import *
+
+  # Import any graphics modules
+  # import graphics_generic
+  #__import__ ( 'graphics_tek', globals(), locals(), [], 0 )
+  graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
+
+  for m in graphics_modules:
+    print ( "Importing graphics module " + str(m) )
+    locals()[m] = __import__(m)
+
   root = Tk()
   root.title("Run_1802")
+
+
 
   # Create a Frame
   next_col = 0
@@ -1112,7 +1123,7 @@ if run_gui:
   Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
 
   # Create a text area
-  text_area = Text (mainframe, width=120, height=50)
+  text_area = Text (mainframe, width=120, height=30)
   text_area.grid ( column=1, row=2, columnspan=next_col, sticky=(N,W,E,S) )
   #text_area['state'] = "disabled"
 
