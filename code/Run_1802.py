@@ -85,9 +85,11 @@ for arg in sys.argv:
 
 if FakeGPIO:
   import Fake_GPIO as GPIO
-  GPIO.verbose = True
+  GPIO.verbose = False
 else:
   import RPi.GPIO as GPIO
+
+root = None
 
 #def ctlc_handler ( sig, frame ):
 #  # print ( "\nExiting after Control-C\n" )
@@ -552,6 +554,20 @@ def append_to_text_area ( s ):
     text_area.see(tk.END)
     text_area.update()
 
+graphics_so_far = []
+graphics_area = None
+def append_to_graphics_area ( b ):
+  global graphics_so_far
+  global graphics_area
+  graphics_so_far.append ( b )
+  if graphics_area != None:
+    gopt = graphics_option.get()
+    if len(gopt) > 0:
+      m = eval('graphics_'+gopt)
+      print ( "Updating " + m.name + " graphics")
+      m.update ( graphics_area, graphics_so_far )
+      root.update()
+
 def print_data(ncl):
   global dump_pins_js
   global js_data_file
@@ -819,6 +835,7 @@ def run ( num_clocks ):
     else:
       if n2_hi != 0:
         # n2 had been high, but just went low, so output
+        append_to_graphics_area ( out4_val )
         if show_out:
           if io_as_hex:
             xout = hex(out4_val).upper()[2:]
@@ -962,7 +979,9 @@ def gui_N_half_clocks(*args):
 
 def gui_clear(*args):
   global text_area
+  global graphics_so_far
   text_area.delete ( 1.0, tk.END )
+  graphics_so_far = []
 
 def gui_debug(*args):
   print ( "Entering Python Console. Use Control-D to exit." )
@@ -1033,24 +1052,20 @@ if run_gui:
   if py2:
     import Tkinter as tk
     from Tkinter import *
+    from ttk import *
   else:
     import tkinter as tk
     from tkinter import *
     from tkinter.ttk import *
 
   # Import any graphics modules
-  # import graphics_generic
-  #__import__ ( 'graphics_tek', globals(), locals(), [], 0 )
   graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
-
   for m in graphics_modules:
     print ( "Importing graphics module " + str(m) )
     locals()[m] = __import__(m)
 
   root = Tk()
   root.title("Run_1802")
-
-
 
   # Create a Frame
   next_col = 0
@@ -1114,6 +1129,13 @@ if run_gui:
   dump_pins_check = Checkbutton(mainframe, variable=dump_pins_var, text="Pins", command=gui_dump_changed)
   dump_pins_check.grid(column=next_col,row=1)
 
+  # Create a combo box for selecting graphics
+  next_col += 1
+  options = [opt[9:] for opt in graphics_modules]
+  options.insert ( 0, '' )
+  graphics_option = StringVar()
+  Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
+
   # Create a button for clearing the output display
   next_col += 1
   Button (mainframe, text="Clear", command=gui_clear).grid(column=next_col, row=1)
@@ -1122,10 +1144,16 @@ if run_gui:
   next_col += 1
   Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
 
+  graphics_cols = 6
   # Create a text area
-  text_area = Text (mainframe, width=120, height=30)
-  text_area.grid ( column=1, row=2, columnspan=next_col, sticky=(N,W,E,S) )
+  text_area = Text (mainframe, width=80, height=30)
+  text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
   #text_area['state'] = "disabled"
+
+  # Create a graphics area
+  graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
+  graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
+  #graphics_area['state'] = "disabled"
 
   # Adjust all children
   for child in mainframe.winfo_children():
