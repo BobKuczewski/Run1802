@@ -72,11 +72,21 @@ import time
 import getopt
 import math
 from signal import signal, SIGINT
-import RPi.GPIO as GPIO
 
 py2 = False
 if sys.version.split(".")[0] == '2':
   py2 = True
+
+FakeGPIO = False
+for arg in sys.argv:
+  if arg == "NoPi":
+    print ( "Using Fake GPIO" )
+    FakeGPIO = True
+
+if FakeGPIO:
+  import Fake_GPIO as GPIO
+else:
+  import RPi.GPIO as GPIO
 
 
 def ctlc_handler ( sig, frame ):
@@ -256,6 +266,7 @@ def h():
   print ( "  x      to use hex for I/O" )
   print ( "  gui    to run the Graphical User Interface" )
   print ( "  p      to drop into Python after running" )
+  print ( "  NoPi   to run outside of the Raspberry Pi" )
   print ( "  help   to print this help message and exit" )
   print ( "Useful functions from Python:" )
   print ( "  h()     to show this help text" )
