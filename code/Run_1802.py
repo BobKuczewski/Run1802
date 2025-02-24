@@ -211,6 +211,9 @@ class gpio_pin:
 
 memory = [0 for i in range(2**16)]
 
+if FakeGPIO:
+  GPIO.fake_1802.memory = memory
+
 ##### Write the default program #####
 
 memory[0] = 0x7a
