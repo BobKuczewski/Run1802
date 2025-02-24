@@ -442,6 +442,9 @@ if len(sys.argv) > 1:
           next_mem_loc += 1
 
 
+if FakeGPIO:
+  GPIO.fake_1802.load_from_RAM()
+
 ##### Set Up the Pins #####
 import Pi_to_1802 as pins
 

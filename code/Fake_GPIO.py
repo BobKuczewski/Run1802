@@ -23,8 +23,13 @@ class fake_1802_sim:
     self.output_data = [ 10,10, 50,10, 50,50, 10,50, 10,10 ] # Continuous Square
     self.output_data = [ 2, 10,50, 50,50, 4, 100,10, 100,20, 110,20, 110,30 ] # PolyLines Steps
     self.output_data = [ 1,1,1, 2,255,1, 2,255,255, 2,1,255, 2,1,1 ] # MoveDraw Box
-    self.output_data = [ 0,0,0,0, 1,90,34, 3,255,0,0, 2,60,106, 3,0,255,0, 2,153,106, 3,0,0,255, 1,116,58, 2,116,153, 0,0,0,0 ] # MoveDraw Box
+    self.output_data = [ 0,0,0,0, 1,90,34, 3,255,0,0, 2,60,106, 3,0,255,0, 2,153,106, 3,0,0,255, 1,116,58, 2,116,153 ] # MoveDraw Box
     self.output_index = -3 # Allows time before drawing starts
+
+  def load_from_RAM ( self ):
+    # Use the values in memory
+    if self.memory != None:
+      self.output_data = [m for m in self.memory[0:1000]]
 
   def get_name_of_pin ( self, pin_num ):
     pins_members = getmembers(pins)
