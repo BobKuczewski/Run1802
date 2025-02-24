@@ -211,6 +211,7 @@ class gpio_pin:
 ##### Define the memory #####
 
 memory = [0 for i in range(2**16)]
+end_of_loaded_code = 0
 
 if FakeGPIO:
   GPIO.fake_1802.memory = memory
@@ -383,6 +384,8 @@ if len(sys.argv) > 1:
       print ( "Loading:\n" + (40*'=') + '\n' + src_txt + (40*'=') + '\n' )
 
       next_mem_loc = 0
+      end_of_loaded_code = next_mem_loc
+
       # Determine if the source text has address information or not
       if ':' in src_txt:
         # This file has some lines in either in Intel Hex Format or addr:data format
@@ -408,16 +411,19 @@ if len(sys.argv) > 1:
                 exit ( 3 )
               # Set the starting location to get this data
               next_mem_loc = addr;
+              if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
               if rectyp == 0:
                 # Store the data in RAM
                 for i in range(int(len(dt)/2)):
                   memory[next_mem_loc] = int(dt[i*2:(i*2)+2],16)
                   next_mem_loc += 1
+                  if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
             elif ':' in ln:
               # This line should be in addr:data format (where data is optional)
               parts = [ p.strip() for p in ln.split(':') ]
               if len(parts[0]) > 0:
                 next_mem_loc = int(parts[0],16)
+                if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
               if len(parts[1]) > 0:
                 # Split the remaining parts by spaces or pairs of hex digits
                 newmem = split_code_text(parts[1])
@@ -425,6 +431,7 @@ if len(sys.argv) > 1:
                   memory[next_mem_loc] = newmem[i]
                   # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
                   next_mem_loc += 1
+                  if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
             else:
               # This line is in plain hex format
               newmem = split_code_text(ln)
@@ -432,7 +439,7 @@ if len(sys.argv) > 1:
                 memory[next_mem_loc] = newmem[i]
                 # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
                 next_mem_loc += 1
-
+                if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
       else:
         # Assume this entire text is plain hex format
         newmem = split_code_text(src_txt)
@@ -440,10 +447,12 @@ if len(sys.argv) > 1:
           memory[next_mem_loc] = newmem[i]
           # print ( "mem[" + str(next_mem_loc) + "] = " + hex(memory[next_mem_loc]) )
           next_mem_loc += 1
+          if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
 
+      if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
 
 if FakeGPIO:
-  GPIO.fake_1802.load_from_RAM()
+  GPIO.fake_1802.load_from_RAM(end_of_loaded_code)
 
 ##### Set Up the Pins #####
 import Pi_to_1802 as pins
