@@ -3,24 +3,32 @@
 # This file provides definitions to replace the GPIO module
 # This allows the code to run outside the Raspberry Pi
 
-BCM = None
-IN = None
-OUT = None
-PUD_OFF = None
+BCM = "FakeBCM"
+IN = "FakeIn"
+OUT = "FakeOut"
+PUD_OFF = "FakePUD_OFF"
+
+verbose = False
 
 def setwarnings(val):
-  pass
+  if verbose:
+    print ( "FakeGPIO: setwarnings called with " + str(val) )
 
 def setmode(val):
-  pass
+  if verbose:
+    print ( "FakeGPIO: setmode called with " + str(val) )
 
 def setup(gpio, direction, initial=None, pull_up_down=None):
-  pass
+  if verbose:
+    print ( "FakeGPIO: setup called for GPIO " + str(gpio) )
 
 def input(gpio):
+  if verbose:
+    print ( "FakeGPIO: input called for GPIO " + str(gpio) )
   return 0
-  pass
 
 def output(gpio, val):
-  pass
+  if verbose:
+    print ( "FakeGPIO: output called for GPIO " + str(gpio) +
+            " with value of " + str(val) )
 
