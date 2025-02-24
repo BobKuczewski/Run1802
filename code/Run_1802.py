@@ -85,7 +85,7 @@ for arg in sys.argv:
 
 if FakeGPIO:
   import Fake_GPIO as GPIO
-  GPIO.verbose = False
+  GPIO.verbose = True
 else:
   import RPi.GPIO as GPIO
 
