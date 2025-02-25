@@ -75,11 +75,14 @@ from signal import signal, SIGINT
 
 py2 = False
 if sys.version.split(".")[0] == '2':
+  print ( "Running with Python 2" )
   py2 = True
+else:
+  print ( "Running with Python " + str(sys.version) )
 
 FakeGPIO = False
 for arg in sys.argv:
-  if arg == "NoPi":
+  if (arg == "NoPi") or (arg == "help") or (arg == "-help") or (arg == "--help"):
     print ( "Using Fake GPIO" )
     FakeGPIO = True
 
@@ -272,7 +275,7 @@ def h():
   print ( "  x      to use hex for I/O" )
   print ( "  gui    to run the Graphical User Interface" )
   print ( "  p      to drop into Python after running" )
-  print ( "  NoPi   to run outside of the Raspberry Pi" )
+  print ( "  NoPi   to run without Raspberry Pi GPIO hardware" )
   print ( "  help   to print this help message and exit" )
   print ( "Useful functions from Python:" )
   print ( "  h()     to show this help text" )
@@ -576,7 +579,7 @@ def append_to_graphics_area ( b ):
     gopt = graphics_option.get()
     if len(gopt) > 0:
       m = eval('graphics_'+gopt)
-      print ( "Updating " + m.name + " graphics")
+      # print ( "Updating " + m.name + " graphics")
       m.update ( graphics_area, graphics_so_far )
       root.update()
 
@@ -1112,7 +1115,7 @@ if run_gui:
   # Create a variable and a text box for the number of clocks
   next_col += 1
   gui_num_clocks = StringVar()
-  gui_num_clocks_entry = Entry(mainframe, width=4, textvariable=gui_num_clocks)
+  gui_num_clocks_entry = Entry(mainframe, width=6, textvariable=gui_num_clocks)
   gui_num_clocks_entry.grid(column=next_col, row=1, sticky=(W,E))
   gui_num_clocks.set(str(num_clocks))
 
