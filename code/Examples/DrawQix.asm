@@ -61,7 +61,7 @@ start   org $0
 
         seq         ; Q On to signal start of program
 
-; Set up all registers to be on the first page
+; Set up all registers to be on the first page (high byte 00)
         ldi 0
         phi $0
         phi $1
@@ -75,69 +75,70 @@ start   org $0
         phi $9
         phi $a
         phi $b
-        phi $c  ; Used for the red color address
-        phi $d  ; Used for the green color address
-        phi $e  ; Used for the blue color address
-        phi $f  ; Used for temporary and output
+        phi $c    ; Used for the red color address
+        phi $d    ; Used for the green color address
+        phi $e    ; Used for the blue color address
+        phi $f    ; Used for temporary and output
 
-        ldi temp
-        plo $f  ; Set RF to temp
-        sex $f
+        ldi temp  ; Load address of temp as scratch
+        plo $f    ; Set RF as a reference to temp
+        sex $f    ; Use RF->temp as X
 
         ; Clear the screen with black
         ldi 4     ; Clear Screen command
-        str $f
-        out 4     ; Send
+        str $f    ; Store 4 in temp
+        out 4     ; Send 4 to port 4 (automatically increments RF)
         dec $f    ; Decrement after Out
         ldi $00   ; Red Color = 0
-        str $f    ; Store for output via X
-        out 4     ; Send
-        dec $f    ; Green Color is still 0
-        out 4     ; Send
-        dec $f    ; Blue Color is still 0
-        out 4     ; Send
-        dec $f    ; Decrement after Out
+        str $f    ; Store 0 for output via X
+        out 4     ; Send 0 to port 4 (automatically increments RF)
+        dec $f    ; Return RF to point at temp (still 0)
+        out 4     ; Send 0 to port 4 (automatically increments RF)
+        dec $f    ; Return RF to point at temp (still 0)
+        out 4     ; Send 0 to port 4 (automatically increments RF)
+        dec $f    ; Return RF to point at temp (still 0)
 
         ; Cycle through the colors as the stick moves
+
         ; First initialize the color registers
-        ldi rstart
-        plo $c
-        ldi gstart
-        plo $d
-        ldi bstart
-        plo $e
+        ldi rstart ; Load address of Red Start
+        plo $c     ; Put Red Start in RC as an index to Red
+        ldi gstart ; Load address of Green Start
+        plo $d     ; Put Green Start in RD as an index to Green
+        ldi bstart ; Load address of Blue Start
+        plo $e     ; Put Blue Start in RE as an index to Blue
 
-        ldi 150
+        ldi 150    ; Run this many iterations
 cloop
-        ldi 3   ; Load the color command (3)
-        sex $f  ; Prepare to store
-        str $f  ; Store in memory to output
-        out 4   ; Output the vale of 3
+        ldi 3      ; Load the color command (3)
+        sex $f     ; Prepare to store
+        str $f     ; Store in memory to output
+        out 4      ; Output the value of 3 as a color command
+        dec $f     ; Return RF to point at temp
         
-        sex $c
-        glo $c
-        smi cend
-        bnz rgood
-        ldi cstart
-        plo $c
-rgood   out 4
+        sex $c     ; X = RC as address into the Red table
+        glo $c     ; Get current Red address (RC.0)
+        smi cend   ; Subtract: RedAddr - ColorEnd
+        bnz rgood  ; Non-zero means not at end of table
+        ldi cstart ; End of table reached, go back to table start
+        plo $c     ; Set Red color index to start of color table
+rgood   out 4      ; Output the value from the Red color table
 
-        sex $d
-        glo $d
-        smi cend
-        bnz ggood
-        ldi cstart
-        plo $d
-ggood   out 4
+        sex $d     ; X = RD as address into the Green table
+        glo $d     ; Get current Green address (RD.0)
+        smi cend   ; Subtract: GreenAddr - ColorEnd
+        bnz ggood  ; Non-zero means not at end of table
+        ldi cstart ; End of table reached, go back to table start
+        plo $d     ; Set Green color index to start of color table
+ggood   out 4      ; Output the value from the Green color table
 
-        sex $e
-        glo $e
-        smi cend
-        bnz bgood
-        ldi cstart
-        plo $e
-bgood   out 4
-        dec $f
+        sex $e     ; X = RD as address into the Green table
+        glo $e     ; Get current Green address (RD.0)
+        smi cend   ; Subtract: GreenAddr - ColorEnd
+        bnz bgood  ; Non-zero means not at end of table
+        ldi cstart ; End of table reached, go back to table start
+        plo $e     ; Set Green color index to start of color table
+bgood   out 4      ; Output the value from the Green color table
 
 ; Draw a line just to show the colors
         sex $f
@@ -172,9 +173,9 @@ cdone
         req         ; Q Off to signal end of program
         idl         ; Done
 
-        byte $11
-        byte $11
-temp    byte 0
+        byte $11    ; Marker to help find data area
+        byte $11    ; Marker to help find data area
+temp    byte 0      ; Used for multiple purposes
 x1      byte 50
 y1      byte 250
 dx1     byte -5
@@ -192,6 +193,11 @@ c       byte 0
 i       byte 0
 
         ; Blue color inicies (shared with Red and Green)
+        ; Red and Green use the same table but start at
+        ; different locations. The address of "cend" is
+        ; used by the code to know when to go back to
+        ; the front of the color table. The table is
+        ; arranged to show the starts of all 3 colors.
 cstart
 bstart  byte   0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 gstart  byte   0,$33,$66,$99,$cc,$ff,$ff,$ff,$ff,$ff
