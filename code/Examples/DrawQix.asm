@@ -80,23 +80,23 @@ start   org $0
         phi $e  ; Used for the blue color address
         phi $f  ; Used for temporary and output
 
-        ldi out
-        plo $f  ; Set RF to out
+        ldi temp
+        plo $f  ; Set RF to temp
         sex $f
 
         ; Clear the screen with black
-        ldi 4
+        ldi 4     ; Clear Screen command
         str $f
-        out 4
-        dec $f
-        ldi $44
-        str $f
-        out 4
-        dec $f
-        out 4
-        dec $f
-        out 4
-        dec $f
+        out 4     ; Send
+        dec $f    ; Decrement after Out
+        ldi $00   ; Red Color = 0
+        str $f    ; Store for output via X
+        out 4     ; Send
+        dec $f    ; Green Color is still 0
+        out 4     ; Send
+        dec $f    ; Blue Color is still 0
+        out 4     ; Send
+        dec $f    ; Decrement after Out
 
         ; Cycle through the colors as the stick moves
         ; First initialize the color registers
@@ -137,6 +137,7 @@ ggood   out 4
         ldi cstart
         plo $e
 bgood   out 4
+        dec $f
 
 ; Draw a line just to show the colors
         sex $f
@@ -173,7 +174,7 @@ cdone
 
         byte $11
         byte $11
-out     byte 0
+temp    byte 0
 x1      byte 50
 y1      byte 250
 dx1     byte -5
