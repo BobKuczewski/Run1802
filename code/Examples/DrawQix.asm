@@ -84,6 +84,20 @@ start   org $0
         plo $f  ; Set RF to out
         sex $f
 
+        ; Clear the screen with black
+        ldi 4
+        str $f
+        out 4
+        dec $f
+        ldi $44
+        str $f
+        out 4
+        dec $f
+        out 4
+        dec $f
+        out 4
+        dec $f
+
         ; Cycle through the colors as the stick moves
         ; First initialize the color registers
         ldi rstart
@@ -123,6 +137,33 @@ ggood   out 4
         ldi cstart
         plo $e
 bgood   out 4
+
+; Draw a line just to show the colors
+        sex $f
+        ldi 1    ; Move command
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
+        ldi 0    ; x
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
+        ldi 0    ; y
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
+        ldi 2    ; Draw command
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
+        ldi 51   ; x
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
+        ldi 51   ; y
+        str $f   ; Store in memory
+        out 4    ; Send it
+        dec $f
 
         br cloop
 cdone
