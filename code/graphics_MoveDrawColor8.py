@@ -24,16 +24,16 @@ def update ( canvas, data ):
       if i+2 < len(data):
         # Move to x,y
         x = draw_scale * data[i+1]
-        y = draw_scale * data[i+2]
+        y = draw_scale * (255-data[i+2])
         # print ( "  Move to (" + str(x) + "," + str(y) + ")" )
       i += 3
     elif data[i] == 2:
       # print ( "Working on Draw Command" )
       if i+2 < len(data):
         # Draw to x,y
-        canvas.create_line ( x, y, draw_scale * data[i+1], draw_scale * data[i+2], fill=draw_color )
+        canvas.create_line ( x, y, draw_scale * data[i+1], draw_scale * (255-data[i+2]), fill=draw_color )
         x = draw_scale * data[i+1]
-        y = draw_scale * data[i+2]
+        y = draw_scale * (255-data[i+2])
         # print ( "  Draw to (" + str(x) + "," + str(y) + ")" )
       i += 3
     elif data[i] == 3:
@@ -59,7 +59,7 @@ def update ( canvas, data ):
         canvas['bg'] = "#" + "{:02X}".format(r) + "{:02X}".format(g) + "{:02X}".format(b)
       i += 4
     else:
-      print ( "Unknown command" )
+      print ( "Unknown command: " + str(data[i]) )
 
   # print ( "Done" )
 
