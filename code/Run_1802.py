@@ -455,7 +455,9 @@ if len(sys.argv) > 1:
       if next_mem_loc > end_of_loaded_code: end_of_loaded_code = next_mem_loc
 
 if FakeGPIO:
-  GPIO.fake_1802.load_from_RAM(end_of_loaded_code)
+  # Since there's no actual 1802 to produce output, get it from RAM
+  # This assumes that the desired output has been loaded into RAM as a hex program
+  GPIO.fake_1802.load_output_from_RAM(end_of_loaded_code)
 
 ##### Set Up the Pins #####
 import Pi_to_1802 as pins

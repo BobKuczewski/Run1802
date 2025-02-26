@@ -28,7 +28,7 @@ class fake_1802_sim:
     self.output_data = [ 4,0,0,0, 1,90,34, 3,255,0,0, 2,60,106, 3,0,255,0, 2,153,106, 3,0,0,255, 1,116,58, 2,116,153 ] # MoveDraw 4
     self.output_index = -3 # Allows time before drawing starts
 
-  def load_from_RAM ( self, end_of_loaded_code ):
+  def load_output_from_RAM ( self, end_of_loaded_code ):
     # Use the values in memory
     print ( "Loading output data from memory up to " + str(end_of_loaded_code) )
     if self.memory != None:
