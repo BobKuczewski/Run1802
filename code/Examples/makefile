@@ -5,6 +5,7 @@ all: \
 	DrawStairs.hex \
 	Subtraction.hex \
 	QixMono.hex \
+	QixColor.hex \
 	DrawQix.hex \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
