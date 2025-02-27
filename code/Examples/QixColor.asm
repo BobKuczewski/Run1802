@@ -27,50 +27,39 @@ start   org $0
         ldi bstart  ; Load address of Blue Start
         plo $e      ; Put Blue Start in RE as an index to Blue
 
-        ldi Temp2 ; Load address of Temp2 as scratch
-        plo $f    ; Set RF as a reference to Temp2
-        sex $f    ; Use RF->Temp2 as X
-
-        ; Clear the screen with black
-        ldi 4     ; Clear Screen command
-        str $f    ; Store 4 in Temp2
-        out 4     ; Send 4 to port 4 (automatically increments RF)
-        dec $f    ; Decrement after out
-        ldi $00   ; Red Color = 0
-        str $f    ; Store 0 for output via X
-        out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at Temp2 (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at Temp2 (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at Temp2 (still 0)
-
-        ldi Advance ; Load the address of the Advance subroutine
-        plo $8      ; Put the Advance subroutine address in $8
-        
         ldi Temp1   ; Load the address of Temp1
         plo $b      ; Put Temp1 address in $b
         
+        ldi Advance ; Load the address of the Advance subroutine
+        plo $8      ; Put the Advance subroutine address in $8
+
         ; Clear the screen with black
-        sex $b    ; Use $b for output
+        sex $b    ; Use $b (Temp1) for output
         ldi 4     ; Clear Screen command
         str $b    ; Store 4 in Temp2
         out 4     ; Send 4 to port 4 (automatically increments $b)
-        dec $b    ; Decrement after Output
+        dec $b    ; Decrement after out
         ldi $00   ; Red Color = 0
         str $b    ; Store 0 for output via X
         out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return $b to point at Temp2 (still 0)
+        dec $b    ; Return RF to point at Temp2 (still 0)
         out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return $b to point at Temp2 (still 0)
+        dec $b    ; Return RF to point at Temp2 (still 0)
         out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return $b to point at Temp2 (still 0)
-        
+        dec $b    ; Return RF to point at Temp2 (still 0)
+
+        ldi Temp2 ; Load address of Temp2 as scratch
+        plo $f    ; Set RF as a reference to Temp2
+        sex $f    ; Use RF->Temp2 as X
 
         ; Cycle through the colors as the line moves
 
         ; ldi 150    ; Run this many iterations? Left over?
 Loop
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        br Move  ; Skip the color stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
         ldi 3      ; Load the color command (3)
         sex $f     ; Prepare to store
         str $f     ; Store in memory to output
@@ -103,7 +92,9 @@ bgood   out 4      ; Output the value from the Green color table
 
         ; Draw a line in the current color
 
-        ; Move to x1,y1
+        sex $b   ; X = $b for this section of the code
+
+Move    ; Move to x1,y1
 
         ldi 1    ; Move command
         str $b   ; Store in memory
@@ -122,7 +113,7 @@ bgood   out 4      ; Output the value from the Green color table
         out 4    ; Send it
         dec $b   ; Keep $b pointing at Temp1
 
-        ; Draw to x2,y2
+Draw    ; Draw to x2,y2
 
         ldi 2    ; Draw command
         str $b   ; Store in memory
@@ -141,7 +132,7 @@ bgood   out 4      ; Output the value from the Green color table
         out 4    ; Send it
         dec $b   ; Keep $b pointing at Temp1
 
-        ; Move all the points
+Adv     ; Advance all the points
 
         ldi x1      ; Load x1
         plo $a      ; $a holds Value
