@@ -4,7 +4,11 @@ all: \
 	DrawBox.hex \
 	DrawStairs.hex \
 	Subtraction.hex \
+	QixMono.hex \
 	DrawQix.hex \
+	CountUpDown.hex \
+	CountUpDownSub.hex \
+	CountUpDownSubX4.hex \
 	fib.hex
 
 %.hex: %.asm makefile
