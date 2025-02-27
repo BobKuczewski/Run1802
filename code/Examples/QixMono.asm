@@ -3,98 +3,98 @@
 start   org $0
 
         ldi 0       ; Load 0
-        phi $c      ; Set upper byte of $c to 0 for data in page 0
-        phi $d      ; Set upper byte of $d to 0 for data in page 0
-        phi $e      ; Set upper byte of $e to 0 for data in page 0
-        phi $f      ; Set upper byte of $e to 0 for data in page 0
+        phi $8      ; Set upper byte of $8 to 0 for data in page 0
+        phi $9      ; Set upper byte of $9 to 0 for data in page 0
+        phi $a      ; Set upper byte of $a to 0 for data in page 0
+        phi $b      ; Set upper byte of $a to 0 for data in page 0
 
         ldi Count   ; Load the address of the Count subroutine
-        plo $c      ; Put the Count subroutine address in $c
+        plo $8      ; Put the Count subroutine address in $8
         
         ldi Out     ; Load the address of Out
-        plo $f      ; Put Out address in $f
+        plo $b      ; Put Out address in $b
         
         ; Clear the screen with black
-        sex $f    ; Use RF for output
+        sex $b    ; Use RF for output
         ldi 4     ; Clear Screen command
-        str $f    ; Store 4 in temp
+        str $b    ; Store 4 in temp
         out 4     ; Send 4 to port 4 (automatically increments RF)
-        dec $f    ; Decrement after Out
+        dec $b    ; Decrement after Out
         ldi $00   ; Red Color = 0
-        str $f    ; Store 0 for output via X
+        str $b    ; Store 0 for output via X
         out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at temp (still 0)
+        dec $b    ; Return RF to point at temp (still 0)
         out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at temp (still 0)
+        dec $b    ; Return RF to point at temp (still 0)
         out 4     ; Send 0 to port 4 (automatically increments RF)
-        dec $f    ; Return RF to point at temp (still 0)
+        dec $b    ; Return RF to point at temp (still 0)
         
 Loop
-        sex $f   ; Use $f for sending
+        sex $b   ; Use $b for sending
 
         ; Move to x1,y1
 
         ldi 1    ; Move command
-        str $f   ; Store in memory
+        str $b   ; Store in memory
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
         ldi x1   ; Load address of x1
-        plo $e   ; $e holds address of x1
-        ldn $e   ; Load actual value of x1
-        str $f   ; Store in memory at Out
+        plo $a   ; $a holds address of x1
+        ldn $a   ; Load actual value of x1
+        str $b   ; Store in memory at Out
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
         ldi y1   ; Load address of y1
-        plo $e   ; $e holds address of y1
-        ldn $e   ; Load actual value of y1
-        str $f   ; Store in memory at Out
+        plo $a   ; $a holds address of y1
+        ldn $a   ; Load actual value of y1
+        str $b   ; Store in memory at Out
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
 
         ; Draw to x2,y2
 
         ldi 2    ; Draw command
-        str $f   ; Store in memory
+        str $b   ; Store in memory
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
         ldi x2   ; Load address of x2
-        plo $e   ; $e holds address of x2
-        ldn $e   ; Load actual value of x2
-        str $f   ; Store in memory at Out
+        plo $a   ; $a holds address of x2
+        ldn $a   ; Load actual value of x2
+        str $b   ; Store in memory at Out
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
         ldi y2   ; Load address of y2
-        plo $e   ; $e holds address of y2
-        ldn $e   ; Load actual value of y2
-        str $f   ; Store in memory at Out
+        plo $a   ; $a holds address of y2
+        ldn $a   ; Load actual value of y2
+        str $b   ; Store in memory at Out
         out 4    ; Send it
-        dec $f   ; Keep $f pointing at Out
+        dec $b   ; Keep $b pointing at Out
 
         ; Move all the points
 
         ldi x1      ; Load x1
-        plo $e      ; $e holds Value
+        plo $a      ; $a holds Value
         ldi dx1     ; Load dx1
-        plo $d      ; $d holds Delta
-        sep $c      ; Call the Count subroutine
+        plo $9      ; $9 holds Delta
+        sep $8      ; Call the Count subroutine
 
         ldi y1      ; Load x1
-        plo $e      ; $e holds Value
+        plo $a      ; $a holds Value
         ldi dy1     ; Load dx1
-        plo $d      ; $d holds Delta
-        sep $c      ; Call the Count subroutine
+        plo $9      ; $9 holds Delta
+        sep $8      ; Call the Count subroutine
 
         ldi x2      ; Load x2
-        plo $e      ; $e holds Value
+        plo $a      ; $a holds Value
         ldi dx2     ; Load dx2
-        plo $d      ; $d holds Delta
-        sep $c      ; Call the Count subroutine
+        plo $9      ; $9 holds Delta
+        sep $8      ; Call the Count subroutine
 
         ldi y2      ; Load x2
-        plo $e      ; $e holds Value
+        plo $a      ; $a holds Value
         ldi dy2     ; Load dx2
-        plo $d      ; $d holds Delta
-        sep $c      ; Call the Count subroutine
+        plo $9      ; $9 holds Delta
+        sep $8      ; Call the Count subroutine
 
         br Loop     ; Branch back to continue counting
         idl
@@ -110,39 +110,39 @@ dy2     byte 8      ; dy2 will switch between + and -
 Out     byte 0      ; Used for sending a byte
 
 Return  sep $0
-Count   ; Assumes Before: [$d->delta $e->value] After [RX = $d]
+Count   ; Assumes Before: [$9->delta $a->value] After [RX = $9]
         seq
         ; Check the current direction
-        ldn $d      ; Load delta via $d
+        ldn $9      ; Load delta via $9
         shlc        ; Shift the high bit into DF
 
         bdf CntDn   ; Branch to count down
 
 CntUp   ; Count Up Value by one Delta reversing Delta above 255
-        ldn $e      ; Value
-        sex $d      ; Set X to point at Delta (now positive)
-        add         ; D = Value + Delta (via $d as X)
-        str $e      ; Value = Value + Delta
+        ldn $a      ; Value
+        sex $9      ; Set X to point at Delta (now positive)
+        add         ; D = Value + Delta (via $9 as X)
+        str $a      ; Value = Value + Delta
         bnf UpDone  ; Done if there's no overflow
         sm          ; Subtract to undo the overflow
-        str $e      ; Update the Value
+        str $a      ; Update the Value
         ldi 0       ; Load Zero
-        sm          ; Change sign on $d: $d = 0-$d
-        str $d      ; Store the changed value in $d
+        sm          ; Change sign on $9: $9 = 0-$9
+        str $9      ; Store the changed value in $9
 UpDone  req
         br Return   ; Return to Main
 
 CntDn   ; Count Down Value by one Delta reversing Delta below 0
-        ldn $e      ; Value
-        sex $d      ; Set X to point at Delta (now negative)
-        add         ; D = Value + Delta (via $d as X)
-        str $e      ; Value = Value + Delta
+        ldn $a      ; Value
+        sex $9      ; Set X to point at Delta (now negative)
+        add         ; D = Value + Delta (via $9 as X)
+        str $a      ; Value = Value + Delta
         bdf DnDone  ; Done if there is an overflow
         sm          ; Subtract to undo the overflow
-        str $e      ; Update the Value
+        str $a      ; Update the Value
         ldi 0       ; Load Zero
-        sm          ; Change sign on $d: $d = 0-$d
-        str $d      ; Store the changed value in $d
+        sm          ; Change sign on $9: $9 = 0-$9
+        str $9      ; Store the changed value in $9
 DnDone  req
         br Return   ; Return to Main
 
