@@ -6,8 +6,8 @@
 ; 3,r,g,b = Set Color to r,g,b
 ; 4,r,g,b = Erase Screen to r,g,b
 
-COLORON equ 0
-ONLYGRN equ 1
+COLORON equ 1
+ONLYGRN equ 0
 
 MOVCMD  equ $1
 DRWCMD  equ $2
@@ -88,24 +88,28 @@ start   org $0
         dec TempQ   ; Return RF to point at temp (still 0)
 
         IF COLORON
-        ;; Set the drawing color to green
-        ;sex TempQ   ; Use RF for output
-        ;ldi COLCMD  ; Clear Screen command
-        ;str TempQ   ; Store COLCMD in temp
-        ;out OPort   ; Send COLCMD to port OPort (automatically increments X)
-        ;dec TempQ   ; Decrement after Out
-        ;ldi $00     ; Red Color
-        ;str TempQ   ; Store 0 for output via X
-        ;out OPort   ; Send 0 to port OPort (automatically increments X)
-        ;dec TempQ   ; Return RF to point at temp (still 0)
-        ;ldi $FF     ; Green Color
-        ;str TempQ   ; Store 0 for output via X
-        ;out OPort   ; Send 0 to port OPort (automatically increments X)
-        ;dec TempQ   ; Return RF to point at temp (still 0)
-        ;ldi $00     ; Blue Color
-        ;str TempQ   ; Store 0 for output via X
-        ;out OPort   ; Send 0 to port OPort (automatically increments X)
-        ;dec TempQ   ; Return RF to point at temp (still 0)
+        ELSE
+        ; This code works here
+        sex COLTEMP  ; Prepare to store
+        ldi COLCMD   ; Load the color command
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color command
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 255      ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
         ENDI
 
 Loop
@@ -114,7 +118,32 @@ Loop
         IF COLORON
         ; Send the next color
         sep SnCoAdd
+        ELSE
+        ; Does this code works here??? NOOOOOOOO!!!
+
+        sex COLTEMP  ; Prepare to store
+        ldi COLCMD   ; Load the color command
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color command
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 255      ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
         ENDI
+
+        sex TempQ   ; Use TempQ for sending
 
         ; Move to x1,y1
 
@@ -248,26 +277,23 @@ SGreen  ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
 
         ; Send the color Green
 
-        ldi COLCMD   ; Load the color command
         sex COLTEMP  ; Prepare to store
+        ldi COLCMD   ; Load the color command
         str COLTEMP  ; Store in memory to output
         out OPort    ; Output the color command
         dec COLTEMP  ;
 
         ldi 0        ; Load the color component
-        sex COLTEMP  ; Prepare to store
         str COLTEMP  ; Store in memory to output
         out OPort    ; Output the color component
         dec COLTEMP  ;
 
         ldi 255      ; Load the color component
-        sex COLTEMP  ; Prepare to store
         str COLTEMP  ; Store in memory to output
         out OPort    ; Output the color component
         dec COLTEMP  ;
 
         ldi 0        ; Load the color component
-        sex COLTEMP  ; Prepare to store
         str COLTEMP  ; Store in memory to output
         out OPort    ; Output the color component
         dec COLTEMP  ;
