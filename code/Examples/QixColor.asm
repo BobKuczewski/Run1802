@@ -1,4 +1,4 @@
-; 1802 program to draw moving colored lines
+; 1802 program to draw a moving line with changing colors
 
 ; Four Drawing Commands:
 ; 1,x,y = Move to x,y
@@ -6,160 +6,182 @@
 ; 3,r,g,b = Set Color to r,g,b
 ; 4,r,g,b = Erase Screen to r,g,b
 
+COLORON equ 0
+ONLYGRN equ 1
+
+MOVCMD  equ $1
+DRWCMD  equ $2
+COLCMD  equ $3
+CLRCMD  equ $4
+
+OPort   equ $4
+X1      equ $0
+Y1      equ $80
+X2      equ $FF
+Y2      equ $80
+
+SnCoAdd equ $7
+AdvAdd  equ	$8
+Delta   equ $9
+Coord   equ $a
+TempQ   equ $b
+
+REDREG  equ $c
+GRNREG  equ $d
+BLUREG  equ $e
+COLTEMP equ $f
+
+OPort   equ $4
+
 start   org $0
 
-; Set up all registers to be on the first page (high byte 00)
-        ghi $0    ; Load 0 into D (save a byte by assuming page 0)
-        phi $8    ; Holds the address of the Advance subroutine
-        phi $9    ; Holds address of Delta during the Advance subroutine
-        phi $a    ; Holds address of Value during the Advance subroutine
-        phi $b    ; Holds address of temporary for output
-        phi $c    ; Used for the red color address
-        phi $d    ; Used for the green color address
-        phi $e    ; Used for the blue color address
-        phi $f    ; Used for temporary and output
+        ldi 0       ; Load 0
+        ; ghi 0       ; Load 0 (saves a byte, but less clear)
+        phi AdvAdd  ; Set upper byte of AdvAdd to 0 for data in page 0
+        phi Delta   ; Set upper byte of Delta to 0 for data in page 0
+        phi Coord   ; Set upper byte of Coord to 0 for data in page 0
+        phi TempQ   ; Set upper byte of TempQ to 0 for data in page 0
 
-        ; Initialize the color registers
-        ldi rstart  ; Load address of Red Start
-        plo $c      ; Put Red Start in RC as an index to Red
-        ldi gstart  ; Load address of Green Start
-        plo $d      ; Put Green Start in RD as an index to Green
-        ldi bstart  ; Load address of Blue Start
-        plo $e      ; Put Blue Start in RE as an index to Blue
+        phi REDREG  ; Used for the red color address
+        phi GRNREG  ; Used for the green color address
+        phi BLUREG  ; Used for the blue color address
+        phi COLTEMP ; Used for temporary and output
 
-        ldi Temp1   ; Load the address of Temp1
-        plo $b      ; Put Temp1 address in $b
-        
+        ldi rstart  ; Load start of the red table
+        plo REDREG  ; Initialize the Red Register
+        ldi gstart  ; Load start of the green table
+        plo GRNREG  ; Initialize the Green Register
+        ldi bstart  ; Load start of the blue table
+        plo BLUREG  ; Initialize the Blue Register
+
         ldi Advance ; Load the address of the Advance subroutine
-        plo $8      ; Put the Advance subroutine address in $8
+        plo AdvAdd  ; Put the Advance subroutine address in AdvAdd
+
+        IF COLORON
+        IF ONLYGRN
+        ldi SGreen  ; Try using the simpler SGreen instead of SnCoAdd
+        ELSE
+        ldi SndColr ; Load the address of the Send Color subroutine
+        ENDI
+        plo SnCoAdd ; Put the Send Color subroutine address in SnCoAdd
+        ENDI
+
+        ldi Out     ; Load the address of Out
+        plo TempQ   ; Put Out address in TempQ
+
+        ldi temp
+        plo COLTEMP  ; Set RF to temp
 
         ; Clear the screen with black
-        sex $b    ; Use $b (Temp1) for output
-        ldi 4     ; Clear Screen command
-        str $b    ; Store 4 in Temp2
-        out 4     ; Send 4 to port 4 (automatically increments $b)
-        dec $b    ; Decrement after out
-        ldi $00   ; Red Color = 0
-        str $b    ; Store 0 for output via X
-        out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return RF to point at Temp2 (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return RF to point at Temp2 (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments $b)
-        dec $b    ; Return RF to point at Temp2 (still 0)
+        sex TempQ   ; Use RF for output
+        ldi CLRCMD  ; Clear Screen command
+        str TempQ   ; Store CLRCMD in temp
+        out OPort   ; Send CLRCMD to port OPort (automatically increments X)
+        dec TempQ   ; Decrement after Out
+        ldi $00     ; Red,Grn,Blu Color = 0
+        str TempQ   ; Store 0 for output via X
+        out OPort   ; Send 0 to port OPort (automatically increments X)
+        dec TempQ   ; Return RF to point at temp (still 0)
+        out OPort   ; Send 0 to port OPort (automatically increments X)
+        dec TempQ   ; Return RF to point at temp (still 0)
+        out OPort   ; Send 0 to port OPort (automatically increments X)
+        dec TempQ   ; Return RF to point at temp (still 0)
 
-        ldi Temp2 ; Load address of Temp2 as scratch
-        plo $f    ; Set RF as a reference to Temp2
-        sex $f    ; Use RF->Temp2 as X
+        IF COLORON
+        ;; Set the drawing color to green
+        ;sex TempQ   ; Use RF for output
+        ;ldi COLCMD  ; Clear Screen command
+        ;str TempQ   ; Store COLCMD in temp
+        ;out OPort   ; Send COLCMD to port OPort (automatically increments X)
+        ;dec TempQ   ; Decrement after Out
+        ;ldi $00     ; Red Color
+        ;str TempQ   ; Store 0 for output via X
+        ;out OPort   ; Send 0 to port OPort (automatically increments X)
+        ;dec TempQ   ; Return RF to point at temp (still 0)
+        ;ldi $FF     ; Green Color
+        ;str TempQ   ; Store 0 for output via X
+        ;out OPort   ; Send 0 to port OPort (automatically increments X)
+        ;dec TempQ   ; Return RF to point at temp (still 0)
+        ;ldi $00     ; Blue Color
+        ;str TempQ   ; Store 0 for output via X
+        ;out OPort   ; Send 0 to port OPort (automatically increments X)
+        ;dec TempQ   ; Return RF to point at temp (still 0)
+        ENDI
 
-        ; Cycle through the colors as the line moves
-
-        ; ldi 150    ; Run this many iterations? Left over?
 Loop
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        br Move  ; Skip the color stuff
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        sex TempQ   ; Use TempQ for sending
 
-        ldi 3      ; Load the color command (3)
-        sex $f     ; Prepare to store
-        str $f     ; Store in memory to output
-        out 4      ; Output the value of 3 as a color command
-        dec $f     ; Return RF to point at Temp2
-        
-        sex $c     ; X = RC as address into the Red table
-        glo $c     ; Get current Red address (RC.0)
-        smi cend   ; Subtract: RedAddr - ColorEnd
-        bnz rgood  ; Non-zero means not at end of table
-        ldi cstart ; End of table reached, go back to table start
-        plo $c     ; Set Red color index to start of color table
-rgood   out 4      ; Output the value from the Red color table
+        IF COLORON
+        ; Send the next color
+        sep SnCoAdd
+        ENDI
 
-        sex $d     ; X = RD as address into the Green table
-        glo $d     ; Get current Green address (RD.0)
-        smi cend   ; Subtract: GreenAddr - ColorEnd
-        bnz ggood  ; Non-zero means not at end of table
-        ldi cstart ; End of table reached, go back to table start
-        plo $d     ; Set Green color index to start of color table
-ggood   out 4      ; Output the value from the Green color table
+        ; Move to x1,y1
 
-        sex $e     ; X = RD as address into the Green table
-        glo $e     ; Get current Green address (RD.0)
-        smi cend   ; Subtract: GreenAddr - ColorEnd
-        bnz bgood  ; Non-zero means not at end of table
-        ldi cstart ; End of table reached, go back to table start
-        plo $e     ; Set Green color index to start of color table
-bgood   out 4      ; Output the value from the Green color table
+        ldi MOVCMD  ; Move command
+        str TempQ   ; Store in memory
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
+        ldi x1      ; Load address of x1
+        plo Coord   ; Coord holds address of x1
+        ldn Coord   ; Load actual value of x1
+        str TempQ   ; Store in memory at Out
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
+        ldi y1      ; Load address of y1
+        plo Coord   ; Coord holds address of y1
+        ldn Coord   ; Load actual value of y1
+        str TempQ   ; Store in memory at Out
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
 
-        ; Draw a line in the current color
+        ; Draw to x2,y2
 
-        sex $b   ; X = $b for this section of the code
+        ldi DRWCMD  ; Draw command
+        str TempQ   ; Store in memory
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
+        ldi x2      ; Load address of x2
+        plo Coord   ; Coord holds address of x2
+        ldn Coord   ; Load actual value of x2
+        str TempQ   ; Store in memory at Out
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
+        ldi y2      ; Load address of y2
+        plo Coord   ; Coord holds address of y2
+        ldn Coord   ; Load actual value of y2
+        str TempQ   ; Store in memory at Out
+        out OPort   ; Send it
+        dec TempQ   ; Keep TempQ pointing at Out
 
-Move    ; Move to x1,y1
-
-        ldi 1    ; Move command
-        str $b   ; Store in memory
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-        ldi x1   ; Load address of x1
-        plo $a   ; $a holds address of x1
-        ldn $a   ; Load actual value of x1
-        str $b   ; Store in memory at Temp1
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-        ldi y1   ; Load address of y1
-        plo $a   ; $a holds address of y1
-        ldn $a   ; Load actual value of y1
-        str $b   ; Store in memory at Temp1
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-
-Draw    ; Draw to x2,y2
-
-        ldi 2    ; Draw command
-        str $b   ; Store in memory
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-        ldi x2   ; Load address of x2
-        plo $a   ; $a holds address of x2
-        ldn $a   ; Load actual value of x2
-        str $b   ; Store in memory at Temp1
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-        ldi y2   ; Load address of y2
-        plo $a   ; $a holds address of y2
-        ldn $a   ; Load actual value of y2
-        str $b   ; Store in memory at Temp1
-        out 4    ; Send it
-        dec $b   ; Keep $b pointing at Temp1
-
-Adv     ; Advance all the points
+        ; Move all the points
 
         ldi x1      ; Load x1
-        plo $a      ; $a holds Value
+        plo Coord   ; Coord holds Value
         ldi dx1     ; Load dx1
-        plo $9      ; $9 holds Delta
-        sep $8      ; Call the Advance subroutine
+        plo Delta   ; Delta holds Delta
+        sep AdvAdd  ; Call the Advance subroutine
 
         ldi y1      ; Load x1
-        plo $a      ; $a holds Value
+        plo Coord   ; Coord holds Value
         ldi dy1     ; Load dx1
-        plo $9      ; $9 holds Delta
-        sep $8      ; Call the Advance subroutine
+        plo Delta   ; Delta holds Delta
+        sep AdvAdd  ; Call the Advance subroutine
 
         ldi x2      ; Load x2
-        plo $a      ; $a holds Value
+        plo Coord   ; Coord holds Value
         ldi dx2     ; Load dx2
-        plo $9      ; $9 holds Delta
-        sep $8      ; Call the Advance subroutine
+        plo Delta   ; Delta holds Delta
+        sep AdvAdd  ; Call the Advance subroutine
 
         ldi y2      ; Load x2
-        plo $a      ; $a holds Value
+        plo Coord   ; Coord holds Value
         ldi dy2     ; Load dx2
-        plo $9      ; $9 holds Delta
-        sep $8      ; Call the Advance subroutine
+        plo Delta   ; Delta holds Delta
+        sep AdvAdd  ; Call the Advance subroutine
 
-        br Loop
-        idl         ; Done
+        br Loop     ; Branch back to continue counting
+        idl
 
 x1      byte 50     ; x1 value to count up and down
 y1      byte 250    ; y1 value to count up and down
@@ -169,58 +191,158 @@ dx1     byte -5     ; dx1 will switch between + and -
 dy1     byte -6     ; dy1 will switch between + and -
 dx2     byte 6      ; dx2 will switch between + and -
 dy2     byte 8      ; dy2 will switch between + and -
-Temp1   byte 0      ; Used for sending a byte
-Temp2   byte 0      ; Used for multiple purposes
-
-        ; Blue color table (shared with Red and Green)
-        ; Red and Green use the same table but start at
-        ; different locations. The address of "cend" is
-        ; used by the code to know when to go back to
-        ; the front of the color table. The table is
-        ; arranged to give the starts of all 3 colors.
+Out     byte 0      ; Used for sending a byte
+temp    byte 0      ; Temp?
+; Color Table: Blue color inicies (shared with Red and Green)
 cstart
 bstart  byte   0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 gstart  byte   0,$33,$66,$99,$cc,$ff,$ff,$ff,$ff,$ff
 rstart  byte $ff,$ff,$ff,$ff,$ff,$ff,$cc,$99,$66,$33
-cend    byte $EE   ; cend and EE mark the end (may not be used any more)
+cend    byte $EE   ; cend and EE mark the end
 
-Return  sep $0
-Advance ; Advance a coordinate value by delta reversing as needed
-        ; Assumes Before: [$9->delta $a->value] After [RX = $9]
-        seq
+;========= Advance Routine =========
+
+RetCnt  sep $0
+Advance ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
+        ;;;seq
         ; Check the current direction
-        ldn $9      ; Load delta via $9
+        ldn Delta   ; Load delta via Delta
         shlc        ; Shift the high bit into DF
 
         bdf CntDn   ; Branch to count down
 
-CntUp   ; Advance the Value by one Delta reversing Delta above 255
-        ldn $a      ; Value
-        sex $9      ; Set X to point at Delta (now positive)
-        add         ; D = Value + Delta (via $9 as X)
-        str $a      ; Value = Value + Delta
+CntUp   ; Count Up Value by one Delta reversing Delta above 255
+        ldn Coord   ; Value
+        sex Delta   ; Set X to point at Delta (now positive)
+        add         ; D = Value + Delta (via Delta as X)
+        str Coord   ; Value = Value + Delta
         bnf UpDone  ; Done if there's no overflow
         sm          ; Subtract to undo the overflow
-        str $a      ; Update the Value
+        str Coord   ; Update the Value
         ldi 0       ; Load Zero
-        sm          ; Change sign on $9: $9 = 0-$9
-        str $9      ; Store the changed value in $9
-UpDone  req
-        br Return   ; Return to Main
+        sm          ; Change sign on Delta: Delta = 0-Delta
+        str Delta   ; Store the changed value in Delta
+UpDone  ;;;req
+        br RetCnt   ; Return to Main
 
-CntDn   ; Advance the Value by one Delta reversing Delta below 0
-        ldn $a      ; Value
-        sex $9      ; Set X to point at Delta (now negative)
-        add         ; D = Value + Delta (via $9 as X)
-        str $a      ; Value = Value + Delta
+CntDn   ; Count Down Value by one Delta reversing Delta below 0
+        ldn Coord   ; Value
+        sex Delta   ; Set X to point at Delta (now negative)
+        add         ; D = Value + Delta (via Delta as X)
+        str Coord   ; Value = Value + Delta
         bdf DnDone  ; Done if there is an overflow
         sm          ; Subtract to undo the overflow
-        str $a      ; Update the Value
+        str Coord   ; Update the Value
         ldi 0       ; Load Zero
-        sm          ; Change sign on $9: $9 = 0-$9
-        str $9      ; Store the changed value in $9
-DnDone  req
-        br Return   ; Return to Main
+        sm          ; Change sign on Delta: Delta = 0-Delta
+        str Delta   ; Store the changed value in Delta
+DnDone  ;;;req
+        br RetCnt   ; Return to Main
+
+        IF ONLYGRN
+
+;========= SGreen Routine =========
+
+RetGrn  sep $0
+SGreen  ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
+
+        ; Send the color Green
+
+        ldi COLCMD   ; Load the color command
+        sex COLTEMP  ; Prepare to store
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color command
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        sex COLTEMP  ; Prepare to store
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 255      ; Load the color component
+        sex COLTEMP  ; Prepare to store
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        ldi 0        ; Load the color component
+        sex COLTEMP  ; Prepare to store
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color component
+        dec COLTEMP  ;
+
+        br RetGrn    ; Return to Main
+
+        ELSE
+
+;========= SndColr Routine =========
+
+RetSnd  sep $0
+SndColr ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
+
+        ; Send the next color
+
+        ldi COLCMD   ; Load the color command
+        sex COLTEMP  ; Prepare to store
+        str COLTEMP  ; Store in memory to output
+        out OPort    ; Output the color command
+        dec COLTEMP  ; ????
+
+        sex REDREG   ; Use the Red Register to output Red value
+        glo REDREG   ; Get the low byte of the Red address
+        smi cend     ; Check to see if it's past the end of the table
+        bnz rgood    ; If it's not past the end, then Red is good
+        ldi cstart   ; Otherwise, load the start of the table
+        plo REDREG   ; Reset the Red Register to the start of the table
+rgood   out OPort    ; Output the Red value and allow REDREG to increment
+
+        sex GRNREG   ; Use the Green Register to output Green value
+        glo GRNREG   ; Get the low byte of the Green address
+        smi cend     ; Check to see if it's past the end of the table
+        bnz ggood    ; If it's not past the end, then Green is good
+        ldi cstart   ; Otherwise, load the start of the table
+        plo GRNREG   ; Reset the Green Register to the start of the table
+ggood   out OPort    ; Output the Green value and allow GRNREG to increment
+
+        sex BLUREG   ; Use the Green Register to output Green value
+        glo BLUREG   ; Get the low byte of the Green address
+        smi cend     ; Check to see if it's past the end of the table
+        bnz bgood    ; If it's not past the end, then Green is good
+        ldi cstart   ; Otherwise, load the start of the table
+        plo BLUREG   ; Reset the Green Register to the start of the table
+bgood   out OPort    ; Output the Green value and allow GRNREG to increment
+
+        br RetSnd    ; Return to Main
+
+        ENDI
+
+;; Draw a line just to show the colors
+;        sex COLTEMP
+;        ldi MOVCMD    ; Move command
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
+;        ldi X1    ; x
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
+;        ldi Y1    ; y
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
+;        ldi DRWCMD    ; Draw command
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
+;        ldi X2  ; x
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
+;        ldi Y2  ; y
+;        str COLTEMP   ; Store in memory
+;        out OPort    ; Send it
+;        dec COLTEMP
 
 		    end
 
