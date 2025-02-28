@@ -6,8 +6,8 @@
 ; 3,r,g,b = Set Color to r,g,b
 ; 4,r,g,b = Erase Screen to r,g,b
 
-COLORON equ 1
-ONLYGRN equ 0
+FULLCOLOR equ 1
+GREENCOLOR equ 0
 
 MOVCMD  equ $1
 DRWCMD  equ $2
@@ -26,10 +26,10 @@ Delta   equ $9
 Coord   equ $a
 TempQ   equ $b
 
-REDREG  equ $c
-GRNREG  equ $d
-BLUREG  equ $e
-COLTEMP equ $f
+RedReg  equ $c
+GrnReg  equ $d
+BluReg  equ $e
+ColTemp equ $f
 
 OPort   equ $4
 
@@ -42,27 +42,23 @@ start   org $0
         phi Coord   ; Set upper byte of Coord to 0 for data in page 0
         phi TempQ   ; Set upper byte of TempQ to 0 for data in page 0
 
-        phi REDREG  ; Used for the red color address
-        phi GRNREG  ; Used for the green color address
-        phi BLUREG  ; Used for the blue color address
-        phi COLTEMP ; Used for temporary and output
+        phi RedReg  ; Used for the red color address
+        phi GrnReg  ; Used for the green color address
+        phi BluReg  ; Used for the blue color address
+        phi ColTemp ; Used for temporary and output
 
         ldi rstart  ; Load start of the red table
-        plo REDREG  ; Initialize the Red Register
+        plo RedReg  ; Initialize the Red Register
         ldi gstart  ; Load start of the green table
-        plo GRNREG  ; Initialize the Green Register
+        plo GrnReg  ; Initialize the Green Register
         ldi bstart  ; Load start of the blue table
-        plo BLUREG  ; Initialize the Blue Register
+        plo BluReg  ; Initialize the Blue Register
 
         ldi Advance ; Load the address of the Advance subroutine
         plo AdvAdd  ; Put the Advance subroutine address in AdvAdd
 
-        IF COLORON
-        IF ONLYGRN
-        ldi SGreen  ; Try using the simpler SGreen instead of SnCoAdd
-        ELSE
+        IF FULLCOLOR
         ldi SndColr ; Load the address of the Send Color subroutine
-        ENDI
         plo SnCoAdd ; Put the Send Color subroutine address in SnCoAdd
         ENDI
 
@@ -70,7 +66,7 @@ start   org $0
         plo TempQ   ; Put Out address in TempQ
 
         ldi temp
-        plo COLTEMP  ; Set RF to temp
+        plo ColTemp  ; Set RF to temp
 
         ; Clear the screen with black
         sex TempQ   ; Use RF for output
@@ -87,60 +83,36 @@ start   org $0
         out OPort   ; Send 0 to port OPort (automatically increments X)
         dec TempQ   ; Return RF to point at temp (still 0)
 
-        IF COLORON
-        ELSE
-        ; This code works here
-        sex COLTEMP  ; Prepare to store
+        IF GREENCOLOR
+        ; Send the Color Command just once before the loop
+        sex ColTemp  ; Prepare to store
         ldi COLCMD   ; Load the color command
-        str COLTEMP  ; Store in memory to output
+        str ColTemp  ; Store in memory to output
         out OPort    ; Output the color command
-        dec COLTEMP  ;
+        dec ColTemp  ;
 
         ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
+        str ColTemp  ; Store in memory to output
         out OPort    ; Output the color component
-        dec COLTEMP  ;
+        dec ColTemp  ;
 
         ldi 255      ; Load the color component
-        str COLTEMP  ; Store in memory to output
+        str ColTemp  ; Store in memory to output
         out OPort    ; Output the color component
-        dec COLTEMP  ;
+        dec ColTemp  ;
 
         ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
+        str ColTemp  ; Store in memory to output
         out OPort    ; Output the color component
-        dec COLTEMP  ;
+        dec ColTemp  ;
         ENDI
 
 Loop
         sex TempQ   ; Use TempQ for sending
 
-        IF COLORON
-        ; Send the next color
+        IF FULLCOLOR
+        ; Send the next color each time through the loop
         sep SnCoAdd
-        ELSE
-        ; Does this code works here??? NOOOOOOOO!!!
-
-        sex COLTEMP  ; Prepare to store
-        ldi COLCMD   ; Load the color command
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color command
-        dec COLTEMP  ;
-
-        ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
-
-        ldi 255      ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
-
-        ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
         ENDI
 
         sex TempQ   ; Use TempQ for sending
@@ -183,7 +155,8 @@ Loop
         out OPort   ; Send it
         dec TempQ   ; Keep TempQ pointing at Out
 
-        ; Move all the points
+        ; Move all the points based on their deltas
+        ; Reflect as needed (all handled in "Advance")
 
         ldi x1      ; Load x1
         plo Coord   ; Coord holds Value
@@ -212,6 +185,8 @@ Loop
         br Loop     ; Branch back to continue counting
         idl
 
+;========= Variables =========
+
 x1      byte 50     ; x1 value to count up and down
 y1      byte 250    ; y1 value to count up and down
 x2      byte 10     ; x2 value to count up and down
@@ -221,13 +196,16 @@ dy1     byte -6     ; dy1 will switch between + and -
 dx2     byte 6      ; dx2 will switch between + and -
 dy2     byte 8      ; dy2 will switch between + and -
 Out     byte 0      ; Used for sending a byte
-temp    byte 0      ; Temp?
+temp    byte 0      ; Used for temporary storage
+
+        IF FULLCOLOR
 ; Color Table: Blue color inicies (shared with Red and Green)
 cstart
 bstart  byte   0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 gstart  byte   0,$33,$66,$99,$cc,$ff,$ff,$ff,$ff,$ff
 rstart  byte $ff,$ff,$ff,$ff,$ff,$ff,$cc,$99,$66,$33
 cend    byte $EE   ; cend and EE mark the end
+        ENDI
 
 ;========= Advance Routine =========
 
@@ -268,39 +246,7 @@ CntDn   ; Count Down Value by one Delta reversing Delta below 0
 DnDone  ;;;req
         br RetCnt   ; Return to Main
 
-        IF ONLYGRN
-
-;========= SGreen Routine =========
-
-RetGrn  sep $0
-SGreen  ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
-
-        ; Send the color Green
-
-        sex COLTEMP  ; Prepare to store
-        ldi COLCMD   ; Load the color command
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color command
-        dec COLTEMP  ;
-
-        ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
-
-        ldi 255      ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
-
-        ldi 0        ; Load the color component
-        str COLTEMP  ; Store in memory to output
-        out OPort    ; Output the color component
-        dec COLTEMP  ;
-
-        br RetGrn    ; Return to Main
-
-        ELSE
+        IF FULLCOLOR
 
 ;========= SndColr Routine =========
 
@@ -310,65 +256,38 @@ SndColr ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
         ; Send the next color
 
         ldi COLCMD   ; Load the color command
-        sex COLTEMP  ; Prepare to store
-        str COLTEMP  ; Store in memory to output
+        sex ColTemp  ; Prepare to store
+        str ColTemp  ; Store in memory to output
         out OPort    ; Output the color command
-        dec COLTEMP  ; ????
+        dec ColTemp  ; ????
 
-        sex REDREG   ; Use the Red Register to output Red value
-        glo REDREG   ; Get the low byte of the Red address
+        sex RedReg   ; Use the Red Register to output Red value
+        glo RedReg   ; Get the low byte of the Red address
         smi cend     ; Check to see if it's past the end of the table
         bnz rgood    ; If it's not past the end, then Red is good
         ldi cstart   ; Otherwise, load the start of the table
-        plo REDREG   ; Reset the Red Register to the start of the table
-rgood   out OPort    ; Output the Red value and allow REDREG to increment
+        plo RedReg   ; Reset the Red Register to the start of the table
+rgood   out OPort    ; Output the Red value and allow RedReg to increment
 
-        sex GRNREG   ; Use the Green Register to output Green value
-        glo GRNREG   ; Get the low byte of the Green address
+        sex GrnReg   ; Use the Green Register to output Green value
+        glo GrnReg   ; Get the low byte of the Green address
         smi cend     ; Check to see if it's past the end of the table
         bnz ggood    ; If it's not past the end, then Green is good
         ldi cstart   ; Otherwise, load the start of the table
-        plo GRNREG   ; Reset the Green Register to the start of the table
-ggood   out OPort    ; Output the Green value and allow GRNREG to increment
+        plo GrnReg   ; Reset the Green Register to the start of the table
+ggood   out OPort    ; Output the Green value and allow GrnReg to increment
 
-        sex BLUREG   ; Use the Green Register to output Green value
-        glo BLUREG   ; Get the low byte of the Green address
+        sex BluReg   ; Use the Green Register to output Green value
+        glo BluReg   ; Get the low byte of the Green address
         smi cend     ; Check to see if it's past the end of the table
         bnz bgood    ; If it's not past the end, then Green is good
         ldi cstart   ; Otherwise, load the start of the table
-        plo BLUREG   ; Reset the Green Register to the start of the table
-bgood   out OPort    ; Output the Green value and allow GRNREG to increment
+        plo BluReg   ; Reset the Green Register to the start of the table
+bgood   out OPort    ; Output the Green value and allow GrnReg to increment
 
         br RetSnd    ; Return to Main
 
         ENDI
-
-;; Draw a line just to show the colors
-;        sex COLTEMP
-;        ldi MOVCMD    ; Move command
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
-;        ldi X1    ; x
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
-;        ldi Y1    ; y
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
-;        ldi DRWCMD    ; Draw command
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
-;        ldi X2  ; x
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
-;        ldi Y2  ; y
-;        str COLTEMP   ; Store in memory
-;        out OPort    ; Send it
-;        dec COLTEMP
 
 		    end
 
