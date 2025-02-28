@@ -108,6 +108,8 @@ start   org $0
         ENDI
 
 Loop
+        seq
+
         sex TempQ   ; Use TempQ for sending
 
         IF FULLCOLOR
@@ -157,6 +159,8 @@ Loop
 
         ; Move all the points based on their deltas
         ; Reflect as needed (all handled in "Advance")
+
+        req
 
         ldi x1      ; Load x1
         plo Coord   ; Coord holds Value
