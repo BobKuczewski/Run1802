@@ -168,9 +168,9 @@ Loop
         plo Delta   ; Delta holds Delta
         sep AdvAdd  ; Call the Advance subroutine
 
-        ldi y1      ; Load x1
+        ldi y1      ; Load y1
         plo Coord   ; Coord holds Value
-        ldi dy1     ; Load dx1
+        ldi dy1     ; Load dy1
         plo Delta   ; Delta holds Delta
         sep AdvAdd  ; Call the Advance subroutine
 
@@ -180,9 +180,9 @@ Loop
         plo Delta   ; Delta holds Delta
         sep AdvAdd  ; Call the Advance subroutine
 
-        ldi y2      ; Load x2
+        ldi y2      ; Load y2
         plo Coord   ; Coord holds Value
-        ldi dy2     ; Load dx2
+        ldi dy2     ; Load dy2
         plo Delta   ; Delta holds Delta
         sep AdvAdd  ; Call the Advance subroutine
 
@@ -215,7 +215,7 @@ cend    byte $EE   ; cend and EE mark the end
 
 RetCnt  sep $0
 Advance ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
-        ;;;seq
+        ;;;seq      ; Used for debugging
         ; Check the current direction
         ldn Delta   ; Load delta via Delta
         shlc        ; Shift the high bit into DF
@@ -233,7 +233,7 @@ CntUp   ; Count Up Value by one Delta reversing Delta above 255
         ldi 0       ; Load Zero
         sm          ; Change sign on Delta: Delta = 0-Delta
         str Delta   ; Store the changed value in Delta
-UpDone  ;;;req
+UpDone  ;;;req      ; Used for debugging
         br RetCnt   ; Return to Main
 
 CntDn   ; Count Down Value by one Delta reversing Delta below 0
@@ -247,7 +247,7 @@ CntDn   ; Count Down Value by one Delta reversing Delta below 0
         ldi 0       ; Load Zero
         sm          ; Change sign on Delta: Delta = 0-Delta
         str Delta   ; Store the changed value in Delta
-DnDone  ;;;req
+DnDone  ;;;req      ; Used for debugging
         br RetCnt   ; Return to Main
 
         IF FULLCOLOR
@@ -263,7 +263,7 @@ SndColr ; Assumes Before: [Delta->delta Coord->value] After [RX = Delta]
         sex ColTemp  ; Prepare to store
         str ColTemp  ; Store in memory to output
         out OPort    ; Output the color command
-        dec ColTemp  ; ????
+        dec ColTemp  ; May not be needed ????
 
         sex RedReg   ; Use the Red Register to output Red value
         glo RedReg   ; Get the low byte of the Red address
@@ -281,13 +281,13 @@ rgood   out OPort    ; Output the Red value and allow RedReg to increment
         plo GrnReg   ; Reset the Green Register to the start of the table
 ggood   out OPort    ; Output the Green value and allow GrnReg to increment
 
-        sex BluReg   ; Use the Green Register to output Green value
-        glo BluReg   ; Get the low byte of the Green address
+        sex BluReg   ; Use the Blue Register to output Blue value
+        glo BluReg   ; Get the low byte of the Blue address
         smi cend     ; Check to see if it's past the end of the table
-        bnz bgood    ; If it's not past the end, then Green is good
+        bnz bgood    ; If it's not past the end, then Blue is good
         ldi cstart   ; Otherwise, load the start of the table
-        plo BluReg   ; Reset the Green Register to the start of the table
-bgood   out OPort    ; Output the Green value and allow GrnReg to increment
+        plo BluReg   ; Reset the Blue Register to the start of the table
+bgood   out OPort    ; Output the Blue value and allow GrnReg to increment
 
         br RetSnd    ; Return to Main
 

@@ -10,7 +10,8 @@ all: \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
 	CountUpDownSubX4.hex \
-	fib.hex
+	fib.hex \
+	fib_ROM.hex
 
 %.hex: %.asm makefile
 	a18 $< -o $@ -l list.txt
