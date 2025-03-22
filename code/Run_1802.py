@@ -1151,6 +1151,7 @@ if run_gui:
   options = [opt[9:] for opt in graphics_modules]
   options.insert ( 0, '' )
   graphics_option = StringVar()
+  graphics_option.set("MoveDrawColor8")
   Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
 
   # Create a button for clearing the output display
