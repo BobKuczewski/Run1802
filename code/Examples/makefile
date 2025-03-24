@@ -8,6 +8,7 @@ all: \
 	QixColor.hex \
 	QixColorFull.hex \
 	DrawColorLine.hex \
+	DrawSquareSpiral.hex \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
 	CountUpDownSubX4.hex \
