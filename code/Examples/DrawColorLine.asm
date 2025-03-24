@@ -1,4 +1,4 @@
-; 1802 program to draw a series of lines
+; 1802 program to draw a line with changing color
 
 ; Four Drawing Commands:
 ; 1,x,y = Move to x,y
@@ -55,7 +55,9 @@
 ;   if (y2<miny) or (y2>maxy) dy2 = -dy2
 ;   
 
-; 1802 program draw moving lines
+; 1802 program draw a line with changing color
+
+GPort   EQU 6
 
 start   org $0
 
@@ -87,15 +89,15 @@ start   org $0
         ; Clear the screen with black
         ldi 4     ; Clear Screen command
         str $f    ; Store 4 in temp
-        out 4     ; Send 4 to port 4 (automatically increments RF)
+        out GPort ; Send 4 to port 4 (automatically increments RF)
         dec $f    ; Decrement after Out
         ldi $00   ; Red Color = 0
         str $f    ; Store 0 for output via X
-        out 4     ; Send 0 to port 4 (automatically increments RF)
+        out GPort ; Send 0 to port 4 (automatically increments RF)
         dec $f    ; Return RF to point at temp (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments RF)
+        out GPort ; Send 0 to port 4 (automatically increments RF)
         dec $f    ; Return RF to point at temp (still 0)
-        out 4     ; Send 0 to port 4 (automatically increments RF)
+        out GPort ; Send 0 to port 4 (automatically increments RF)
         dec $f    ; Return RF to point at temp (still 0)
 
         ; Cycle through the colors as the stick moves
@@ -113,7 +115,7 @@ cloop
         ldi 3      ; Load the color command (3)
         sex $f     ; Prepare to store
         str $f     ; Store in memory to output
-        out 4      ; Output the value of 3 as a color command
+        out GPort  ; Output the value of 3 as a color command
         dec $f     ; Return RF to point at temp
         
         sex $c     ; X = RC as address into the Red table
@@ -122,7 +124,7 @@ cloop
         bnz rgood  ; Non-zero means not at end of table
         ldi cstart ; End of table reached, go back to table start
         plo $c     ; Set Red color index to start of color table
-rgood   out 4      ; Output the value from the Red color table
+rgood   out GPort  ; Output the value from the Red color table
 
         sex $d     ; X = RD as address into the Green table
         glo $d     ; Get current Green address (RD.0)
@@ -130,7 +132,7 @@ rgood   out 4      ; Output the value from the Red color table
         bnz ggood  ; Non-zero means not at end of table
         ldi cstart ; End of table reached, go back to table start
         plo $d     ; Set Green color index to start of color table
-ggood   out 4      ; Output the value from the Green color table
+ggood   out GPort  ; Output the value from the Green color table
 
         sex $e     ; X = RD as address into the Green table
         glo $e     ; Get current Green address (RD.0)
@@ -138,33 +140,33 @@ ggood   out 4      ; Output the value from the Green color table
         bnz bgood  ; Non-zero means not at end of table
         ldi cstart ; End of table reached, go back to table start
         plo $e     ; Set Green color index to start of color table
-bgood   out 4      ; Output the value from the Green color table
+bgood   out GPort  ; Output the value from the Green color table
 
 ; Draw a line just to show the colors
         sex $f
         ldi 1    ; Move command
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
         ldi 0    ; x
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
         ldi 0    ; y
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
         ldi 2    ; Draw command
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
         ldi 51   ; x
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
         ldi 51   ; y
         str $f   ; Store in memory
-        out 4    ; Send it
+        out GPort; Send it
         dec $f
 
         br cloop

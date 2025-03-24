@@ -6,7 +6,8 @@ all: \
 	Subtraction.hex \
 	QixMono.hex \
 	QixColor.hex \
-	DrawQix.hex \
+	QixColorFull.hex \
+	DrawColorLine.hex \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
 	CountUpDownSubX4.hex \

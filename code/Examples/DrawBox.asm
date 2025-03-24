@@ -37,10 +37,6 @@ DATA   BYTE $03   ; Set Color
        BYTE $02   ; Draw to ...
        BYTE $50   ; x: 50x
        BYTE $50   ; y: B0x
-       BYTE $03   ; Set Color (to send extra bytes)
-       BYTE $00   ; Red: 00
-       BYTE $00   ; Green: 00
-       BYTE $00   ; Blue: 00
 EDATA             ; Label to measure number of graphics commands
 		   END
 
