@@ -2,6 +2,7 @@ all: \
 	blink.hex \
 	Draw4.hex \
 	DrawBox.hex \
+	DrawBoxColor.hex \
 	DrawStairs.hex \
 	Subtraction.hex \
 	QixMono.hex \
