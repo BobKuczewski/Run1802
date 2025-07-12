@@ -10,6 +10,8 @@ all: \
 	QixColorFull.hex \
 	DrawColorLine.hex \
 	DrawSquareSpiral.hex \
+	DrawEnterprisePix.hex \
+	DrawEnterprisePixBits.hex \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
 	CountUpDownSubX4.hex \
