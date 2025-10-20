@@ -24,8 +24,14 @@ var timing_names = [ "Clk", "MRD", "SC0", "TPA", "TPB", "Q", "A2", "A1", "A0", "
 
 var timing_data = [];
 
+var zoom = 0;
+var pan = 0;
+
+var ileft = 0;  // 0 <= ileft < n
+var zoom = 0;
+
 var time_points_list = [];
-function draw_in_area ( drawing_area, prog_text ) {
+function draw_in_area ( drawing_area ) {
   var w = drawing_area.width;
   var h = drawing_area.height;
 
@@ -38,6 +44,8 @@ function draw_in_area ( drawing_area, prog_text ) {
   timing_data = timing_data.split('\n');
 
   var ctxt = drawing_area.getContext("2d");
+  // ctxt.setTransform(zoom,0,0,1,pan,0); // Transformed EVERYTHING :(
+
   ctxt.fillStyle = "#222222"; // Background Color
   ctxt.fillRect(0,0,w,h);
 
@@ -50,6 +58,17 @@ function draw_in_area ( drawing_area, prog_text ) {
   let num_plots = timing_names.length;
   let panel_ht = h / num_plots;
 
+  // Pan controls the icenter value
+  // Zoom always zooms around the center
+  let x_scale = 1.0 * document.getElementById ( "zoom" ).value;
+  let x_pan = document.getElementById ( "pan" ).value;
+  //     Index  0   1   2   3   4   5   6   7
+  let tvals = [ 0, 10, 20, 30, 40, 50, 60, 70 ];
+  let n=tvals.length;
+  n=npts;
+  let icenter = (n*x_pan).toFixed();
+  console.log ( "icenter = " + icenter );
+
   // Draw the plots
   var color_list = [ "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#cccccc" ];
   for (let p=0; p<num_plots; p++) {
@@ -57,16 +76,18 @@ function draw_in_area ( drawing_area, prog_text ) {
     // ctxt.strokeStyle = "#FF0000"; // Default Line Color
     ctxt.strokeStyle = color_list[p%color_list.length]; // Default Line Color
     ctxt.beginPath();
+
     let base_y = p * h / num_plots;
     let lx = 0;
     let ly = 0;
     ctxt.font = "12px Arial";
     ctxt.fillStyle = "#bbbbbb";
     ctxt.fillText ( timing_names[p], 10, base_y + 13 );
-    for (let n=0; n<npts; n++) {
-      let x = n * w / npts;
-      let y = base_y + ((panel_ht/2) * (1 - time_points_list[n][p])) + (panel_ht/4);
-      if (n == 0) {
+    for (let i=0; i<npts; i++) {
+      let x = i * w / npts;
+      x = (w/2) + ((i-icenter) * (100**x_scale) * w / (npts-1) );
+      let y = base_y + ((panel_ht/2) * (1 - time_points_list[i][p])) + (panel_ht/4);
+      if (i == 0) {
         ctxt.moveTo ( x, y );
       } else {
         ctxt.lineTo ( x, ly );
@@ -78,12 +99,38 @@ function draw_in_area ( drawing_area, prog_text ) {
     ctxt.stroke();
   }
 
+  // Draw time values for zoom and pan
+  // Time relationship between t and x is:
+  // x = (int)(( t - x0 ) * x_scale);
+  //  so...
+  // t = ( x / x_scale ) + x0
+  // tleft = ( x / x_scale ) + x0
+  // tright = ( (x+w) / x_scale ) + x0
+  // tright - tleft = [ ( (x+w) / x_scale ) + x0 ]  -  [ ( x / x_scale ) + x0 ]
+  //                = ( (x+w) / x_scale ) + x0  - ( x / x_scale ) - x0
+  //                = ( (x+w) / x_scale ) - ( x / x_scale )
+  //                = ( x + w - x ) / x_scale
+  //                =  w / x_scale
+
+  // Draw time values for zoom and pan
+  // Time relationship between t and x is:
+  // x = (int)(( t - x0 ) * x_scale);
+  //  so...
+  // t = ( x / x_scale ) + x0
+  // tleft = ( x / x_scale ) + x0
+  // tright = ( (x+w) / x_scale ) + x0
+  // tright - tleft = [ ( (x+w) / x_scale ) + x0 ]  -  [ ( x / x_scale ) + x0 ]
+  //                = ( (x+w) / x_scale ) + x0  - ( x / x_scale ) - x0
+  //                = ( (x+w) / x_scale ) - ( x / x_scale )
+  //                = ( x + w - x ) / x_scale
+  //                =  w / x_scale
+
 }
 
 
 var def_prog = '';
 
-function check_prog(program) {
+function check_prog() {
 }
 
 function reset_pars() {
@@ -92,10 +139,9 @@ function reset_pars() {
   ctxt.lineWidth = 1;
 }
 
-function draw_area(program) {
+function draw_area() {
   var drawing_area = document.getElementById ( "drawing_area" );
-  var prog_text = document.getElementById('timing_data_area').value;
-  draw_in_area ( drawing_area, prog_text );
+  draw_in_area ( drawing_area );
 }
 
 function dw ( delta ) {
@@ -108,12 +154,25 @@ function dh ( delta ) {
   drawing_area.height = drawing_area.height + delta;
 }
 
+function update_zoom() {
+  // Zoom around the current center of the plot
+  zoom = document.getElementById ( "zoom" ).value;
+  console.log ( "zoom: " + zoom );
+  draw_area();
+}
+
+function update_pan() {
+  // Move the current center of the plot
+  pan = document.getElementById ( "pan" ).value;
+  console.log ( "pan: " + pan );
+  draw_area();
+}
 
 </script>
 
 <body
-  onload="draw_area(def_prog)"
-  onresize="draw_area(def_prog)"
+  onload="reset_pars(); draw_area()"
+  onresize="draw_area()"
 >
 <!-- style="overflow:hidden; margin:0px; padding:0px; border:0px; background-color:#222222;" -->
 
@@ -124,31 +183,54 @@ function dh ( delta ) {
 <td align="center">
 <canvas
   id="drawing_area"
-  width="1200" height="500"
+  width="600" height="500"
   style="margin:0px; padding:0px; border:0px solid #cccccc;"
 >
   Your browser does not support the HTML5 canvas tag.
 </canvas>
 </td>
 </tr>
+
 <tr>
 <td align="center">
-<input type="button" name="ref_model" value="Run" onclick="reset_pars(); draw_area(document.getElementById('timing_data_area').value);"></input>
-<input type="button" name="H+" value="H+" onclick="dh(20); draw_area(document.getElementById('timing_data_area').value);"></input>
-<input type="button" name="H-" value="H-" onclick="dh(-20); draw_area(document.getElementById('timing_data_area').value);"></input>
-<input type="button" name="W+" value="W+" onclick="dw(20); draw_area(document.getElementById('timing_data_area').value);"></input>
-<input type="button" name="W-" value="W-" onclick="dw(-20); draw_area(document.getElementById('timing_data_area').value);"></input></td>
+Zoom <input type="range" id="zoom" min="0.0" max="1.0" step=0.01 value="0.00" oninput="update_zoom();"></input>
+&nbsp; &nbsp; 
+<input type="range" id="pan" min="0.0" max="1.0" step=0.01 value="0.5" oninput="update_pan();"></input> Pan
+</td>
 </tr>
+
 <tr>
 <td align="center">
-<textarea id="timing_header_area" rows="1" cols="80" onchange="check_prog(document.getElementById('timing_header_area').value)" >
+<input type="button" name="ref_model" value="Update" onclick="reset_pars(); draw_area();"></input>
+<input type="button" name="H+" value="H+" onclick="dh(20); draw_area();"></input>
+<input type="button" name="H-" value="H-" onclick="dh(-20); draw_area();"></input>
+<input type="button" name="W+" value="W+" onclick="dw(20); draw_area();"></input>
+<input type="button" name="W-" value="W-" onclick="dw(-20); draw_area();"></input>
+</td>
+</tr>
+
+<tr>
+<td align="center">
+<textarea id="timing_header_area" rows="1" cols="80" onchange="check_prog()" >
 Clk MRD SC0 TPA TPB Q A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0
 </textarea>
 </td>
 </tr>
 <tr>
 <td align="center">
-<textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog(document.getElementById('timing_data_area').value)" >
+<!--
+<textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog()" >
+0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
+1 0 1 0 1 1 0 1 0 0 0 1 1 0 0 0 0
+</textarea>
+-->
+<textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog()" >
 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
 1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
 0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
@@ -260,7 +342,7 @@ Clk MRD SC0 TPA TPB Q A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0
 </table>
 
 <!-- This script can overwrite the data in the text areas -->
-<script src="data.js"></script>
+<!-- <script src="data.js"></script> -->
 
 </body>
 </html>
