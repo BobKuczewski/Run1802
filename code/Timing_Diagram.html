@@ -27,9 +27,6 @@ var timing_data = [];
 var zoom = 0;
 var pan = 0;
 
-var ileft = 0;  // 0 <= ileft < n
-var zoom = 0;
-
 var time_points_list = [];
 function draw_in_area ( drawing_area ) {
   var w = drawing_area.width;
@@ -41,10 +38,12 @@ function draw_in_area ( drawing_area ) {
 
   timing_data = document.getElementById("timing_data_area").value;
   timing_data = replace_all(timing_data, '\n\n', '\n');
+  timing_data = replace_all(timing_data, ',', '');
+  timing_data = replace_all(timing_data, '[', '');
+  timing_data = replace_all(timing_data, ']', '');
   timing_data = timing_data.split('\n');
 
   var ctxt = drawing_area.getContext("2d");
-  // ctxt.setTransform(zoom,0,0,1,pan,0); // Transformed EVERYTHING :(
 
   ctxt.fillStyle = "#222222"; // Background Color
   ctxt.fillRect(0,0,w,h);
@@ -62,12 +61,7 @@ function draw_in_area ( drawing_area ) {
   // Zoom always zooms around the center
   let x_scale = 1.0 * document.getElementById ( "zoom" ).value;
   let x_pan = document.getElementById ( "pan" ).value;
-  //     Index  0   1   2   3   4   5   6   7
-  let tvals = [ 0, 10, 20, 30, 40, 50, 60, 70 ];
-  let n=tvals.length;
-  n=npts;
-  let icenter = (n*x_pan).toFixed();
-  console.log ( "icenter = " + icenter );
+  let icenter = (npts*x_pan).toFixed();
 
   // Draw the plots
   var color_list = [ "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#cccccc" ];
@@ -99,36 +93,7 @@ function draw_in_area ( drawing_area ) {
     ctxt.stroke();
   }
 
-  // Draw time values for zoom and pan
-  // Time relationship between t and x is:
-  // x = (int)(( t - x0 ) * x_scale);
-  //  so...
-  // t = ( x / x_scale ) + x0
-  // tleft = ( x / x_scale ) + x0
-  // tright = ( (x+w) / x_scale ) + x0
-  // tright - tleft = [ ( (x+w) / x_scale ) + x0 ]  -  [ ( x / x_scale ) + x0 ]
-  //                = ( (x+w) / x_scale ) + x0  - ( x / x_scale ) - x0
-  //                = ( (x+w) / x_scale ) - ( x / x_scale )
-  //                = ( x + w - x ) / x_scale
-  //                =  w / x_scale
-
-  // Draw time values for zoom and pan
-  // Time relationship between t and x is:
-  // x = (int)(( t - x0 ) * x_scale);
-  //  so...
-  // t = ( x / x_scale ) + x0
-  // tleft = ( x / x_scale ) + x0
-  // tright = ( (x+w) / x_scale ) + x0
-  // tright - tleft = [ ( (x+w) / x_scale ) + x0 ]  -  [ ( x / x_scale ) + x0 ]
-  //                = ( (x+w) / x_scale ) + x0  - ( x / x_scale ) - x0
-  //                = ( (x+w) / x_scale ) - ( x / x_scale )
-  //                = ( x + w - x ) / x_scale
-  //                =  w / x_scale
-
 }
-
-
-var def_prog = '';
 
 function check_prog() {
 }
@@ -157,14 +122,13 @@ function dh ( delta ) {
 function update_zoom() {
   // Zoom around the current center of the plot
   zoom = document.getElementById ( "zoom" ).value;
-  console.log ( "zoom: " + zoom );
+  if (zoom == 0) document.getElementById ( "pan" ).value = 0.5;  // Brings it back to initial full screen
   draw_area();
 }
 
 function update_pan() {
   // Move the current center of the plot
-  pan = document.getElementById ( "pan" ).value;
-  console.log ( "pan: " + pan );
+  // pan = document.getElementById ( "pan" ).value;
   draw_area();
 }
 
@@ -193,9 +157,9 @@ function update_pan() {
 
 <tr>
 <td align="center">
-Zoom <input type="range" id="zoom" min="0.0" max="1.0" step=0.01 value="0.00" oninput="update_zoom();"></input>
+Zoom <input type="range" id="zoom" min="0.0" max="1.0" step=0.001 value="0.00" oninput="update_zoom();"></input>
 &nbsp; &nbsp; 
-<input type="range" id="pan" min="0.0" max="1.0" step=0.01 value="0.5" oninput="update_pan();"></input> Pan
+<input type="range" id="pan" min="0.0" max="1.0" step=0.001 value="0.5" oninput="update_pan();"></input> Pan
 </td>
 </tr>
 
@@ -218,18 +182,6 @@ Clk MRD SC0 TPA TPB Q A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0
 </tr>
 <tr>
 <td align="center">
-<!--
-<textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog()" >
-0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
-1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-0 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
-1 0 1 0 1 1 0 1 0 0 0 1 1 0 0 0 0
-</textarea>
--->
 <textarea id="timing_data_area" rows="10" cols="80" onchange="check_prog()" >
 0 0 1 0 0 0 0 1 0 0 0 1 1 0 0 0 0
 1 0 1 0 0 1 0 1 0 0 0 1 1 0 0 0 0
@@ -342,7 +294,7 @@ Clk MRD SC0 TPA TPB Q A2 A1 A0 D7 D6 D5 D4 D3 D2 D1 D0
 </table>
 
 <!-- This script can overwrite the data in the text areas -->
-<!-- <script src="data.js"></script> -->
+<script src="data.js"></script>
 
 </body>
 </html>
