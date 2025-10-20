@@ -12,6 +12,7 @@ all: \
 	DrawSquareSpiral.hex \
 	DrawEnterprisePix.hex \
 	DrawEnterprisePixBits.hex \
+	OutputRAM.hex \
 	CountUpDown.hex \
 	CountUpDownSub.hex \
 	CountUpDownSubX4.hex \
