@@ -60,6 +60,8 @@ NMRD    = 17
 NMWR    = 16
 N2      = 18
 
+NEF1    = 23
+
 MA0     =  0
 MA1     =  1
 MA2     =  2

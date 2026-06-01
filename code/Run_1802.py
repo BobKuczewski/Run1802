@@ -247,6 +247,7 @@ memory[3] = 0x00
 
 ##### Process Command Line Parameters #####
 
+assert_EF1 = False
 dump_pins = False
 dump_pins_js = False
 js_data_file = None
@@ -258,7 +259,8 @@ io_as_hex = False
 num_clocks = 1000000
 clock_time = 2 * settling_sleep_time
 open_console = False
-run_gui = False
+run_min_gui = False
+run_graphics_gui = False
 
 def h():
   print ( "Command Line Parameters:" )
@@ -273,7 +275,8 @@ def h():
   print ( "  js     to save output in data.js" )
   print ( "  js=fn  to save output in file fn" )
   print ( "  x      to use hex for I/O" )
-  print ( "  gui    to run the Graphical User Interface" )
+  print ( "  gui0   to run the minimal GUI (Graphical User Interface)" )
+  print ( "  gui1   to run the Graphics GUI for simple drawing (not working)" )
   print ( "  p      to drop into Python after running" )
   print ( "  NoPi   to run without Raspberry Pi GPIO hardware" )
   print ( "  help   to print this help message and exit" )
@@ -329,8 +332,11 @@ if len(sys.argv) > 1:
     if arg == "d":
       dump_pins = True
 
-    if arg == "gui":
-      run_gui = True
+    if arg == "gui0":
+      run_min_gui = True
+
+    if arg == "gui1":
+      run_graphics_gui = True
 
     if arg == "x":
       io_as_hex = True
@@ -469,6 +475,7 @@ clock  = gpio_pin(pins.CLOCK,  gpio_pin.OUT, False)
 nclear = gpio_pin(pins.NCLEAR, gpio_pin.OUT, True)
 ndmai  = gpio_pin(pins.NDMAI,  gpio_pin.OUT, True)
 nint   = gpio_pin(pins.NINT,   gpio_pin.OUT, True)
+nef1   = gpio_pin(pins.NEF1,   gpio_pin.OUT, True)  # True means inactive
 
 # Set up various indicators as inputs for the Pi to read
 tpa    = gpio_pin(pins.TPA,  gpio_pin.IN)
@@ -529,32 +536,34 @@ def get_js_header_string():
 
 # Define a function to log the pin values
 def get_data_string ( ncl ):
-  s   =   str(str(ncl) + ' ' +
-          str(bival(clock.get_val())) + ' ' +
-          str(tpa.get_val()) + ' ' +
-          str(tpb.get_val()) + ' ' +
-          str(sc0.get_val()) + ' ' +
-          str(nmrd.get_val()) + ' ' +
-          str(nmwr.get_val()) + ' ' +
-          str(n2.get_val()) + ' ' +
-          str(ma7.get_val()) + ' ' +
-          str(ma6.get_val()) + ' ' +
-          str(ma5.get_val()) + ' ' +
-          str(ma4.get_val()) + ' ' +
-          str(ma3.get_val()) + ' ' +
-          str(ma2.get_val()) + ' ' +
-          str(ma1.get_val()) + ' ' +
-          str(ma0.get_val()) + ' ' +
-          str(bival(all_data_are_inputs())) + ' ' +
-          str(bival(d7.get_val_safe())) + ' ' +
-          str(bival(d6.get_val_safe())) + ' ' +
-          str(bival(d5.get_val_safe())) + ' ' +
-          str(bival(d4.get_val_safe())) + ' ' +
-          str(bival(d3.get_val_safe())) + ' ' +
-          str(bival(d2.get_val_safe())) + ' ' +
-          str(bival(d1.get_val_safe())) + ' ' +
-          str(bival(d0.get_val_safe())) + ' ' +
-          str(qout.get_val()))
+  s   =   str ( str(ncl) + ' ' +
+                str(bival(clock.get_val())) + ' ' +
+                str(tpa.get_val()) + ' ' +
+                str(tpb.get_val()) + ' ' +
+                str(sc0.get_val()) + ' ' +
+                str(nmrd.get_val()) + ' ' +
+                str(nmwr.get_val()) + ' ' +
+                str(n2.get_val()) + ' ' +
+                str(ma7.get_val()) + ' ' +
+                str(ma6.get_val()) + ' ' +
+                str(ma5.get_val()) + ' ' +
+                str(ma4.get_val()) + ' ' +
+                str(ma3.get_val()) + ' ' +
+                str(ma2.get_val()) + ' ' +
+                str(ma1.get_val()) + ' ' +
+                str(ma0.get_val()) + ' ' +
+                str(bival(all_data_are_inputs())) + ' ' +
+                str(bival(d7.get_val_safe())) + ' ' +
+                str(bival(d6.get_val_safe())) + ' ' +
+                str(bival(d5.get_val_safe())) + ' ' +
+                str(bival(d4.get_val_safe())) + ' ' +
+                str(bival(d3.get_val_safe())) + ' ' +
+                str(bival(d2.get_val_safe())) + ' ' +
+                str(bival(d1.get_val_safe())) + ' ' +
+                str(bival(d0.get_val_safe())) + ' ' +
+                str(qout.get_val()) + ' ' +
+                str(bival(nef1.get_val()))
+          )
   return ( s )
 
 text_so_far = ''
@@ -588,7 +597,8 @@ def append_to_graphics_area ( b ):
 def print_data(ncl):
   global dump_pins_js
   global js_data_file
-  global run_gui
+  global run_min_gui
+  global run_graphics_gui
   s = get_data_string(ncl)
   if dump_pins_js and (js_data_file != None):
     js_data_file.write ( " + \"" + s + "\\n\"\n" );
@@ -813,13 +823,20 @@ def run ( num_clocks ):
   global n2_hi
   global out4_val
   global tpb_hi
-  global run_gui
+  global run_min_gui
+  global run_graphics_gui
   global dump_pins
   global dump_pins_js
+  global assert_EF1
 
   for i in range(num_clocks):
     clock.toggle()
     time.sleep ( settling_sleep_time )
+
+    if assert_EF1:
+      nef1.set_val ( 0x00 )
+    else:
+      nef1.set_val ( 0x01 )
 
     # Get the current address lines from the 1802
     a0 = ma0.get_val()
@@ -1001,7 +1018,11 @@ def gui_clear(*args):
   graphics_so_far = []
 
 def gui_debug(*args):
-  print ( "Entering Python Console. Use Control-D to exit." )
+  print ( "***********************************************************" )
+  print ( "*                                                         *" )
+  print ( "*    Entering Python Console. Use Control-D to return.    *" )
+  print ( "*                                                         *" )
+  print ( "***********************************************************" )
   __import__('code').interact(local={k: v for ns in (globals(), locals()) for k, v in ns.items()})
 
 def gui_dump_changed (*args):
@@ -1010,9 +1031,21 @@ def gui_dump_changed (*args):
   if dump_pins_var.get() != 0:
     dump_pins = True
     print ( "Setting dump_pins to True" )
+    print ( get_header_string() )
   else:
     dump_pins = False
+    print ( get_header_string() )
     print ( "Setting dump_pins to False" )
+
+def gui_EF1_changed (*args):
+  global assert_EF1_var
+  global assert_EF1
+  if assert_EF1_var.get() != 0:
+    print ( "Asserting EF1 (set assert_EF1 to True)" )
+    assert_EF1 = True
+  else:
+    print ( "DeAsserting EF1 (set assert_EF1 to False)" )
+    assert_EF1 = False
 
 def gui_trace_changed (*args):
   global trace_exec_var
@@ -1065,7 +1098,7 @@ def reset_1802():
   nclear.set_val ( True )
   time.sleep ( 0.1 )
 
-if run_gui:
+if run_graphics_gui or run_min_gui:
   if py2:
     import Tkinter as tk
     from Tkinter import *
@@ -1075,11 +1108,12 @@ if run_gui:
     from tkinter import *
     from tkinter.ttk import *
 
-  # Import any graphics modules
-  graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
-  for m in graphics_modules:
-    print ( "Importing graphics module " + str(m) )
-    locals()[m] = __import__(m)
+  if run_graphics_gui:
+    # Import any graphics modules
+    graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
+    for m in graphics_modules:
+      print ( "Importing graphics module " + str(m) )
+      locals()[m] = __import__(m)
 
   root = Tk()
   root.title("Run_1802")
@@ -1146,13 +1180,20 @@ if run_gui:
   dump_pins_check = Checkbutton(mainframe, variable=dump_pins_var, text="Pins", command=gui_dump_changed)
   dump_pins_check.grid(column=next_col,row=1)
 
-  # Create a combo box for selecting graphics
+  # Create a variable and a check box for setting the EF1 flag
   next_col += 1
-  options = [opt[9:] for opt in graphics_modules]
-  options.insert ( 0, '' )
-  graphics_option = StringVar()
-  graphics_option.set("MoveDrawColor8")
-  Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
+  assert_EF1_var = IntVar()
+  assert_EF1_var.set(int(assert_EF1))
+  assert_EF1_check = Checkbutton(mainframe, variable=assert_EF1_var, text="EF1", command=gui_EF1_changed)
+  assert_EF1_check.grid(column=next_col,row=1)
+
+  if run_graphics_gui:
+    # Create a combo box for selecting graphics
+    next_col += 1
+    options = [opt[9:] for opt in graphics_modules]
+    options.insert ( 0, '' )
+    graphics_option = StringVar()
+    Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
 
   # Create a button for clearing the output display
   next_col += 1
@@ -1162,11 +1203,21 @@ if run_gui:
   next_col += 1
   Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
 
-  graphics_cols = 6
-  # Create a text area
-  text_area = Text (mainframe, width=80, height=30)
-  text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
-  #text_area['state'] = "disabled"
+  if run_min_gui:
+    graphics_cols = 0
+    # Create a text area
+    text_area = Text (mainframe, width=80, height=30)
+    text_area.grid ( column=1, row=2, columnspan=13, sticky=(N+W+E+S) )
+    #text_area['state'] = "disabled"
+
+  if run_graphics_gui:
+    graphics_cols = 6
+    # Create a text area
+    text_area = Text (mainframe) #, width=80, height=30)
+    text_area.grid_columnconfigure ( 0, weight=1 )
+    text_area.pack()
+    #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
+    #text_area['state'] = "disabled"
 
   # Create a graphics area
   graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
