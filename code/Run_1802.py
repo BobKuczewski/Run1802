@@ -259,8 +259,9 @@ io_as_hex = False
 num_clocks = 1000000
 clock_time = 2 * settling_sleep_time
 open_console = False
-run_min_gui = False
-run_graphics_gui = False
+run_gui0 = False
+run_gui1 = False
+run_gui2 = False
 
 def h():
   print ( "Command Line Parameters:" )
@@ -277,6 +278,7 @@ def h():
   print ( "  x      to use hex for I/O" )
   print ( "  gui0   to run the minimal GUI (Graphical User Interface)" )
   print ( "  gui1   to run the Graphics GUI for simple drawing (not working)" )
+  print ( "  gui2   to run the Graphics GUI controlling the 1802" )
   print ( "  p      to drop into Python after running" )
   print ( "  NoPi   to run without Raspberry Pi GPIO hardware" )
   print ( "  help   to print this help message and exit" )
@@ -333,10 +335,13 @@ if len(sys.argv) > 1:
       dump_pins = True
 
     if arg == "gui0":
-      run_min_gui = True
+      run_gui0 = True
 
     if arg == "gui1":
-      run_graphics_gui = True
+      run_gui1 = True
+
+    if arg == "gui2":
+      run_gui2 = True
 
     if arg == "x":
       io_as_hex = True
@@ -470,7 +475,7 @@ import Pi_to_1802 as pins
 
 GPIO.setmode(GPIO.BCM) # Use the Broadcom numbering shown on Pi ribbon connector plug.
 
-# Set up the CLOCK and /CLEAR and /INT as outputs for the Pi to control
+# Set up the CLOCK and /CLEAR and /INT and /EF1 as outputs for the Pi to control
 clock  = gpio_pin(pins.CLOCK,  gpio_pin.OUT, False)
 nclear = gpio_pin(pins.NCLEAR, gpio_pin.OUT, True)
 ndmai  = gpio_pin(pins.NDMAI,  gpio_pin.OUT, True)
@@ -526,7 +531,7 @@ def all_data_are_inputs():
 
 # Define a function to print a header for logged pins
 def get_header_string():
-  s = "nCL CLK TPA TPB SC0 nRD nWR N2 ma7 ma6 ma5 ma4 ma3 ma2 ma1 ma0 aIN d7 d6 d5 d4 d3 d2 d1 d0 Q"
+  s = "nCL CLK TPA TPB SC0 nRD nWR N2 ma7 ma6 ma5 ma4 ma3 ma2 ma1 ma0 aIN d7 d6 d5 d4 d3 d2 d1 d0 Q nEF1"
   return ( s )
 
 def get_js_header_string():
@@ -597,13 +602,14 @@ def append_to_graphics_area ( b ):
 def print_data(ncl):
   global dump_pins_js
   global js_data_file
-  global run_min_gui
-  global run_graphics_gui
+  global run_gui0
+  global run_gui1
+  global run_gui2
   s = get_data_string(ncl)
   if dump_pins_js and (js_data_file != None):
     js_data_file.write ( " + \"" + s + "\\n\"\n" );
   print ( s )
-  if run_gui:
+  if run_gui0 or run_gui1 or run_gui2:
     append_to_text_area ( s )
 
 addr_hi = 0
@@ -823,8 +829,8 @@ def run ( num_clocks ):
   global n2_hi
   global out4_val
   global tpb_hi
-  global run_min_gui
-  global run_graphics_gui
+  global run_gui0
+  global run_gui1
   global dump_pins
   global dump_pins_js
   global assert_EF1
@@ -876,11 +882,11 @@ def run ( num_clocks ):
             if len(xout) < 2:
               xout = '0' + xout
             print ( xout )
-            if run_gui:
+            if run_gui0 or run_gui1 or run_gui2:
               append_to_text_area ( xout )
           else:
             print ( str(out4_val) )
-            if run_gui:
+            if run_gui0 or run_gui1 or run_gui2:
               append_to_text_area ( str(out4_val) )
         # Reset  n2_hi and out4_val
         n2_hi = 0
@@ -944,7 +950,7 @@ def run ( num_clocks ):
             if trace_exec:
               trace_str = "Fetch at addr " + hex4((addr_hi<<8) | addr) + " got " + hex2(data_byte) + " = " + get_instr(hex2(data_byte),addr)
               print ( trace_str )
-              if run_gui:
+              if run_gui0 or run_gui1 or run_gui2:
                 append_to_text_area ( trace_str )
             if stop_on_idle:
               if data_byte == 0:
@@ -1098,17 +1104,27 @@ def reset_1802():
   nclear.set_val ( True )
   time.sleep ( 0.1 )
 
-if run_graphics_gui or run_min_gui:
-  if py2:
+if run_gui0 or run_gui1 or run_gui2:
+  '''
+    if py2:
+      import Tkinter as tk
+      from Tkinter import *
+      from ttk import *
+    else:
+      import tkinter as tk
+      from tkinter import *
+      from tkinter.ttk import *
+  '''
+  if sys.version_info[0] <= 2:
     import Tkinter as tk
     from Tkinter import *
-    from ttk import *
+    # from Tkinter import ttk
   else:
     import tkinter as tk
     from tkinter import *
     from tkinter.ttk import *
 
-  if run_graphics_gui:
+  if run_gui1:
     # Import any graphics modules
     graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
     for m in graphics_modules:
@@ -1118,115 +1134,158 @@ if run_graphics_gui or run_min_gui:
   root = Tk()
   root.title("Run_1802")
 
-  # Create a Frame
-  next_col = 0
-  if py2:
-    mainframe = Frame(root)
-  else:
-    mainframe = Frame(root,padding="3 3 12 12")
-  mainframe.grid ( column=next_col, row=0, sticky=(N,W,E,S))
-  root.columnconfigure(next_col,weight=1)
-  root.rowconfigure(next_col,weight=1)
+  if run_gui0 or run_gui1:
 
-  # Create a button to reset the 1802
-  next_col += 1
-  Button (mainframe, text="Reset", command=gui_reset).grid(column=next_col, row=1)
+    # Create a Frame
+    next_col = 0
+    if py2:
+      mainframe = Frame(root)
+    else:
+      mainframe = Frame(root,padding="3 3 12 12")
+    mainframe.grid ( column=next_col, row=0, sticky=(N+W+E+S))
+    root.columnconfigure(next_col,weight=1)
+    root.rowconfigure(next_col,weight=1)
 
-  # Create the labels
-  next_col += 1
-  Label(mainframe, text="Run:").grid(column=next_col, row=1, sticky=E)
-
-  # Create a button for a half clock
-  next_col += 1
-  Button (mainframe, text="Half Clock", command=gui_half_clock).grid(column=next_col, row=1)
-
-  # Create a button for a Full clock
-  next_col += 1
-  Button (mainframe, text="Full Clock", command=gui_full_clock).grid(column=next_col, row=1)
-
-  # Create a button for 8 Clocks
-  next_col += 1
-  Button (mainframe, text="8 clocks", command=gui_8_clocks).grid(column=next_col, row=1)
-
-  # Create a variable and a text box for the number of clocks
-  next_col += 1
-  gui_num_clocks = StringVar()
-  gui_num_clocks_entry = Entry(mainframe, width=6, textvariable=gui_num_clocks)
-  gui_num_clocks_entry.grid(column=next_col, row=1, sticky=(W,E))
-  gui_num_clocks.set(str(num_clocks))
-
-  # Create a button for N Clocks
-  next_col += 1
-  Button (mainframe, text="Half Clocks", command=gui_N_half_clocks).grid(column=next_col, row=1)
-
-  # Create a variable and a check box for showing output
-  next_col += 1
-  show_out_var = IntVar()
-  show_out_var.set(int(show_out))
-  show_out_check = Checkbutton(mainframe, variable=show_out_var, text="Out", command=gui_out_changed)
-  show_out_check.grid(column=next_col,row=1)
-
-  # Create a variable and a check box for dumping trace data
-  next_col += 1
-  trace_exec_var = IntVar()
-  trace_exec_var.set(int(trace_exec))
-  trace_exec_check = Checkbutton(mainframe, variable=trace_exec_var, text="Trace", command=gui_trace_changed)
-  trace_exec_check.grid(column=next_col,row=1)
-
-  # Create a variable and a check box for dumping pin data
-  next_col += 1
-  dump_pins_var = IntVar()
-  dump_pins_var.set(int(dump_pins))
-  dump_pins_check = Checkbutton(mainframe, variable=dump_pins_var, text="Pins", command=gui_dump_changed)
-  dump_pins_check.grid(column=next_col,row=1)
-
-  # Create a variable and a check box for setting the EF1 flag
-  next_col += 1
-  assert_EF1_var = IntVar()
-  assert_EF1_var.set(int(assert_EF1))
-  assert_EF1_check = Checkbutton(mainframe, variable=assert_EF1_var, text="EF1", command=gui_EF1_changed)
-  assert_EF1_check.grid(column=next_col,row=1)
-
-  if run_graphics_gui:
-    # Create a combo box for selecting graphics
+    # Create a button to reset the 1802
     next_col += 1
-    options = [opt[9:] for opt in graphics_modules]
-    options.insert ( 0, '' )
-    graphics_option = StringVar()
-    Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
+    Button (mainframe, text="Reset", command=gui_reset).grid(column=next_col, row=1)
 
-  # Create a button for clearing the output display
-  next_col += 1
-  Button (mainframe, text="Clear", command=gui_clear).grid(column=next_col, row=1)
+    # Create the labels
+    next_col += 1
+    Label(mainframe, text="Run:").grid(column=next_col, row=1, sticky=E)
 
-  # Create a button for debug
-  next_col += 1
-  Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
+    # Create a button for a half clock
+    next_col += 1
+    Button (mainframe, text="Half Clock", command=gui_half_clock).grid(column=next_col, row=1)
 
-  if run_min_gui:
-    graphics_cols = 0
-    # Create a text area
-    text_area = Text (mainframe, width=80, height=30)
-    text_area.grid ( column=1, row=2, columnspan=13, sticky=(N+W+E+S) )
-    #text_area['state'] = "disabled"
+    # Create a button for a Full clock
+    next_col += 1
+    Button (mainframe, text="Full Clock", command=gui_full_clock).grid(column=next_col, row=1)
 
-  if run_graphics_gui:
-    graphics_cols = 6
-    # Create a text area
-    text_area = Text (mainframe) #, width=80, height=30)
-    text_area.grid_columnconfigure ( 0, weight=1 )
-    text_area.pack()
-    #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
-    #text_area['state'] = "disabled"
+    # Create a button for 8 Clocks
+    next_col += 1
+    Button (mainframe, text="8 clocks", command=gui_8_clocks).grid(column=next_col, row=1)
 
-  # Create a graphics area
-  graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
-  graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
-  #graphics_area['state'] = "disabled"
+    # Create a variable and a text box for the number of clocks
+    next_col += 1
+    gui_num_clocks = StringVar()
+    gui_num_clocks_entry = Entry(mainframe, width=6, textvariable=gui_num_clocks)
+    gui_num_clocks_entry.grid(column=next_col, row=1, sticky=(W,E))
+    gui_num_clocks.set(str(num_clocks))
 
-  # Adjust all children
-  for child in mainframe.winfo_children():
-    child.grid_configure(padx=5, pady=5)
+    # Create a button for N Clocks
+    next_col += 1
+    Button (mainframe, text="Half Clocks", command=gui_N_half_clocks).grid(column=next_col, row=1)
+
+    # Create a variable and a check box for showing output
+    next_col += 1
+    show_out_var = IntVar()
+    show_out_var.set(int(show_out))
+    show_out_check = Checkbutton(mainframe, variable=show_out_var, text="Out", command=gui_out_changed)
+    show_out_check.grid(column=next_col,row=1)
+
+    # Create a variable and a check box for dumping trace data
+    next_col += 1
+    trace_exec_var = IntVar()
+    trace_exec_var.set(int(trace_exec))
+    trace_exec_check = Checkbutton(mainframe, variable=trace_exec_var, text="Trace", command=gui_trace_changed)
+    trace_exec_check.grid(column=next_col,row=1)
+
+    # Create a variable and a check box for dumping pin data
+    next_col += 1
+    dump_pins_var = IntVar()
+    dump_pins_var.set(int(dump_pins))
+    dump_pins_check = Checkbutton(mainframe, variable=dump_pins_var, text="Pins", command=gui_dump_changed)
+    dump_pins_check.grid(column=next_col,row=1)
+
+    # Create a variable and a check box for setting the EF1 flag
+    next_col += 1
+    assert_EF1_var = IntVar()
+    assert_EF1_var.set(int(assert_EF1))
+    assert_EF1_check = Checkbutton(mainframe, variable=assert_EF1_var, text="EF1", command=gui_EF1_changed)
+    assert_EF1_check.grid(column=next_col,row=1)
+
+    if run_gui1:
+      # Create a combo box for selecting graphics
+      next_col += 1
+      options = [opt[9:] for opt in graphics_modules]
+      options.insert ( 0, '' )
+      graphics_option = StringVar()
+      Combobox (mainframe,state="readonly",values=options,textvariable=graphics_option).grid(column=next_col, row=1)
+
+    # Create a button for clearing the output display
+    next_col += 1
+    Button (mainframe, text="Clear", command=gui_clear).grid(column=next_col, row=1)
+
+    # Create a button for debug
+    next_col += 1
+    Button (mainframe, text="Debug", command=gui_debug).grid(column=next_col, row=1)
+
+    if run_gui0:
+      graphics_cols = 0
+      # Create a text area
+      text_area = Text (mainframe, width=80, height=30)
+      text_area.grid ( column=1, row=2, columnspan=13, sticky=(N+W+E+S) )
+      #text_area['state'] = "disabled"
+
+    if run_gui1:
+      graphics_cols = 6
+      # Create a text area
+      text_area = Text (mainframe) #, width=80, height=30)
+      text_area.grid_columnconfigure ( 0, weight=1 )
+      text_area.pack()
+      #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
+      #text_area['state'] = "disabled"
+
+      # Create a graphics area
+      graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
+      graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
+      #graphics_area['state'] = "disabled"
+
+    if run_gui2:
+      graphics_cols = 6
+      # Create a text area
+      text_area = Text (mainframe) #, width=80, height=30)
+      text_area.grid_columnconfigure ( 0, weight=1 )
+      text_area.pack()
+      #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
+      #text_area['state'] = "disabled"
+
+      # Create a graphics area
+      graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
+      graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
+      #graphics_area['state'] = "disabled"
+
+    # Adjust all children
+    for child in mainframe.winfo_children():
+      child.grid_configure(padx=5, pady=5)
+
+  elif run_gui2:
+
+    f1 = tk.Frame ( root, bg='red' )
+    f2 = tk.Frame ( root, bg='green' )
+    f3 = tk.Frame ( root, bg='blue' )
+
+    label1 = Label(f1, text='Optional Header')
+    label1.pack()
+
+    b1 = Button(f2, text='B1')
+    b1.pack(padx=5, pady=3, side=LEFT)
+
+    b2 = Button(f2, text='B222222')
+    b2.pack(padx=5, pady=3, side=LEFT)
+
+    b3 = Button(f2, text='B333333333333')
+    b3.pack(padx=5, pady=3, side=LEFT)
+
+    #label3 = Label(f3, text='Graphics',bg='blue', fg='white')
+    label3 = Canvas(f3, bg='black')
+    label3.pack(fill=BOTH, expand=True)
+
+    f1.pack(side=TOP, fill=BOTH, expand=False)
+    f2.pack(side=TOP, fill=BOTH, expand=False)
+    f3.pack(side=TOP, fill=BOTH, expand=True)
+
 
   # Reset the 1802 with whatever logging has been put in place
   reset_1802()
