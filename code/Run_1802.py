@@ -1003,19 +1003,25 @@ def mem ():
 
 
 def gui_reset(*args):
+  print ( "Resetting the 1802" )
   reset_1802()
 
 def gui_half_clock(*args):
+  print ( "Running 1 half clock" )
   run ( 1 )
 
 def gui_full_clock(*args):
+  print ( "Running 1 full clock" )
   run ( 2 )
 
 def gui_8_clocks(*args):
+  print ( "Running 8 full clocks" )
   run ( 2*8 )
 
 def gui_N_half_clocks(*args):
-  run ( int(gui_num_clocks.get()) )
+  n = int(gui_num_clocks.get())
+  print ( "Running " + str(n) + " half clocks" )
+  run ( n )
 
 def gui_clear(*args):
   global text_area
@@ -1104,17 +1110,8 @@ def reset_1802():
   nclear.set_val ( True )
   time.sleep ( 0.1 )
 
+
 if run_gui0 or run_gui1 or run_gui2:
-  '''
-    if py2:
-      import Tkinter as tk
-      from Tkinter import *
-      from ttk import *
-    else:
-      import tkinter as tk
-      from tkinter import *
-      from tkinter.ttk import *
-  '''
   if sys.version_info[0] <= 2:
     import Tkinter as tk
     from Tkinter import *
@@ -1124,6 +1121,64 @@ if run_gui0 or run_gui1 or run_gui2:
     from tkinter import *
     from tkinter.ttk import *
 
+class ResizingCanvas ( Canvas ):
+  def __init__(self, parent, **kwargs):
+    Canvas.__init__(self, parent, **kwargs)
+    self.bind("<Configure>", self.on_resize)
+    self.win_w = self.winfo_reqwidth()
+    self.win_h = self.winfo_reqheight()
+  def on_resize(self, event):
+    print ("Resized!! to " + str(event.width) + "x" + str(event.height) )
+    self.win_w = event.width
+    self.win_h = event.height
+    self.draw()
+
+class Pi1802Canvas ( ResizingCanvas ):
+  def draw(self):
+    print ( "Redrawing at: " + str(self.win_w) + "x" + str(self.win_h) )
+    pin_names = [ 'CLK',  '/WAIT', '/CLR', 'Q',    'SC1',  'SC0',  '/MRD',  'D7',    'D6',    'D5',
+                  'D4',   'D3',    'D2',   'D1',   'D0',   'Vcc',  'N2',    'N1',    'N0',    'Vss',
+                  '/EF4', '/EF3',  '/EF2', '/EF1', 'MA0',  'MA1',  'MA2',   'MA3',   'MA4',   'MA5',
+                  'MA6',  'MA7',   'TPB',  'TPA',  '/MWR', '/INT', '/DMAO', '/DMAI', '/XTAL', 'VDD' ]
+    pin_modes = [ 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1,
+                  1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1 ]
+    pin_mode_colors = [ '#5555aa', '#55ff55', 'pink' ]
+    w = self.win_w
+    h = self.win_h
+    h1802 = 7*h/8
+    w1802 = h1802/3
+    x1802 = (w-w1802)/2
+    y1802 = (h-h1802)/2
+    dx = w1802 * 0.05
+    dy = h1802 / 40.0
+    wl = w1802/2
+    self.delete('all')
+    for i in range(20):
+      y = y1802+(dy/2)+(i*2*dy)
+      # Draw the lines through the pins (drawm all the way through the chip)
+      self.create_line ( x1802-(3*wl/2), y+(dy/2), x1802+(3*wl)+(wl/2), y+(dy/2), fill='black', tag='line' )
+      # Draw the pins (drawm as on rectangle all the way through the chip)
+      self.create_rectangle( x1802-dx, y, x1802+w1802+dx, y+dy, fill='white', tag='pin')
+      # Draw the status indicators for the current voltage on each pin
+      self.create_oval( (x1802-dx)-wl, y-(dy/4), (x1802+dx)-wl, y+(5*dy/4), fill='yellow', tag='pin')
+      self.create_oval( (x1802+w1802+wl-dx), y-(dy/4), (x1802+w1802+wl+dx), y+(5*dy/4), fill='yellow', tag='pin')
+      # Draw the buttons that control inputs to the pins
+      c = pin_mode_colors[pin_modes[i]]
+      self.create_rectangle( x1802-(3*wl/2)-dx, y-(dy/3), dx+dx+x1802-(3*wl/2), y+(4*dy/3), fill=c, tag='pin')
+      c = pin_mode_colors[pin_modes[39-i]]
+      self.create_rectangle( x1802+(3*wl)+(wl/2)-(2*dx), y-(dy/3), dx+x1802+(3*wl)+(wl/2), y+(4*dy/3), fill=c, tag='pin')
+    self.create_rectangle( x1802, y1802, x1802+w1802, y1802+h1802, fill='black', tag='1802')
+    font_size = int(12*h/560)  # 560 was the height of the window when a 12 point font was appropriate
+    for i in range(20):
+      y = y1802+(dy/2)+(i*2*dy)
+      self.create_text( x1802+w1802-(2*dx), y+(dy/2), text=str(40-i), fill='white', font=(None, font_size) )
+      self.create_text( x1802+(2*dx), y+(dy/2), text=str(i+1), fill='white', font=(None, font_size) )
+      self.create_text( x1802-(5*dx), y+(dy/2), text=pin_names[i], fill='#00ffff', font=(None, font_size) )
+      self.create_text( x1802+w1802+(5*dx), y+(dy/2), text=pin_names[39-i], fill='#00ffff', font=(None, font_size) )
+    self.create_text( x1802+(w1802/2), y1802+(18*dy), text="RCA", fill='#ffffff', font=(None, int(font_size*2.4), "bold") )
+    self.create_text( x1802+(w1802/2), y1802+(21*dy), text="1802", fill='#ffffff', font=(None, font_size*2, "bold") )
+
+if run_gui0 or run_gui1 or run_gui2:
   if run_gui1:
     # Import any graphics modules
     graphics_modules = [ f[0:-3] for f in os.listdir('.') if (f.startswith('graphics_') and f.endswith('.py'))]
@@ -1242,45 +1297,49 @@ if run_gui0 or run_gui1 or run_gui2:
       graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
       #graphics_area['state'] = "disabled"
 
-    if run_gui2:
-      graphics_cols = 6
-      # Create a text area
-      text_area = Text (mainframe) #, width=80, height=30)
-      text_area.grid_columnconfigure ( 0, weight=1 )
-      text_area.pack()
-      #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
-      #text_area['state'] = "disabled"
-
-      # Create a graphics area
-      graphics_area = Canvas (mainframe, width=258, height=258, bg='black')
-      graphics_area.grid ( column=next_col-(graphics_cols-1), row=2, columnspan=graphics_cols, sticky=(N,W,E,S) )
-      #graphics_area['state'] = "disabled"
-
     # Adjust all children
     for child in mainframe.winfo_children():
       child.grid_configure(padx=5, pady=5)
 
   elif run_gui2:
 
-    f1 = tk.Frame ( root, bg='red' )
-    f2 = tk.Frame ( root, bg='green' )
-    f3 = tk.Frame ( root, bg='blue' )
+    f1 = tk.Frame ( root )
+    f2 = tk.Frame ( root )
+    f3 = tk.Frame ( root )
 
-    label1 = Label(f1, text='Optional Header')
-    label1.pack()
+    w1 = Label(f1, text='Direct Interaction with a CDP1802')
+    w1.pack()
 
-    b1 = Button(f2, text='B1')
+    b1 = Button (f2, text="Reset", command=gui_reset)
     b1.pack(padx=5, pady=3, side=LEFT)
 
-    b2 = Button(f2, text='B222222')
+    Label(f2, text="Run:")
+
+    b2 = Button(f2, text='Half Clock', command=gui_half_clock)
     b2.pack(padx=5, pady=3, side=LEFT)
 
-    b3 = Button(f2, text='B333333333333')
+    b3 = Button(f2, text='Full Clock', command=gui_full_clock)
     b3.pack(padx=5, pady=3, side=LEFT)
 
-    #label3 = Label(f3, text='Graphics',bg='blue', fg='white')
-    label3 = Canvas(f3, bg='black')
-    label3.pack(fill=BOTH, expand=True)
+    b4 = Button (f2, text="8 clocks", command=gui_8_clocks)
+    b4.pack(padx=5, pady=3, side=LEFT)
+
+    # Create a variable and a text box for the number of clocks
+    gui_num_clocks = StringVar()
+    gui_num_clocks_entry = Entry(f2, width=6, textvariable=gui_num_clocks)
+    gui_num_clocks_entry.pack(padx=5, pady=3, side=LEFT)
+    gui_num_clocks.set(str(num_clocks))
+
+    b5 = Button (f2, text="Half Clocks", command=gui_N_half_clocks)
+    b5.pack(padx=5, pady=3, side=LEFT)
+
+    Label(f2, text="   ")
+
+    b6 = Button (f2, text="Debug", command=gui_debug)
+    b6.pack(padx=30, pady=3, side=LEFT)
+
+    w3 = Pi1802Canvas(f3, width=640, height=560, bg='gray')
+    w3.pack(fill=BOTH, expand=True)
 
     f1.pack(side=TOP, fill=BOTH, expand=False)
     f2.pack(side=TOP, fill=BOTH, expand=False)
