@@ -297,6 +297,35 @@ def h():
   print ( "Use up and down arrows in Python for history" )
   print ( "Use Control-D to exit Python" )
   print ( "Use Control-C to exit Run_1802" )
+  print ( "" )
+  print ( 'Running gui0 to print the Fibonacci Sequence up to 233:' )
+  print ( '  $ python3 Run_1802.py o f=fib.ahx n=2800 gui0' )
+  print ( '  Click "Half Clocks" button to run 2,800 iterations' )
+  print ( '  It should print the Fibonacci Sequence up to 233' )
+  print ( "" )
+  print ( 'Running gui0 to test EF1 controlling Q with hex program:' )
+  print ( '  $ python3 Run_1802.py o t h=7b7a34083c0b30027b30027a3002 n=5000 gui0' )
+  print ( '  Click "Half Clocks" button to run 5,000 iterations' )
+  print ( '  Clicking the "EF1" check box should toggle Q LED on board' )
+  print ( "" )
+  print ( 'Running gui1 with QixColor.hex:' )
+  print ( '  $ python3 Run_1802.py o f=Examples/QixColor.hex n=20000 gui1' )
+  print ( '  Select "MoveDrawColor8" in the drop down menu' )
+  print ( '  Click "Half Clocks" button to run 20,000 iterations' )
+  print ( '  It should draw 5 lines from red to yellow and stop' )
+  print ( '  The Q LED should be on during output and off during calculation' )
+  print ( "" )
+  print ( 'Running gui1 using QixColor.hex output saved in a hex file:' )
+  print ( '  $ python3 Run_1802.py o f=Examples/QixColorData.phx n=6800 NoPi gui1' )
+  print ( '  Select "MoveDrawColor8" in the drop down menu' )
+  print ( '  Click "Half Clocks" button to run 6,800 iterations' )
+  print ( '  It should draw many colored lines and stop after about 30 seconds' )
+  print ( "" )
+  print ( 'Running gui2 using [SEQ,REQ,BR 00] to blink the Q LED:' )
+  print ( '  $ python3 Run_1802.py o t h=7b7a3000 n=8000 gui2' )
+  print ( '  Click "Half Clocks" button to run 1,000 iterations' )
+  print ( '  The Q LED should blink for about 10 seconds' )
+
 
 def split_code_text(s):
   # Parse a string of hex with possible embedded spaces
@@ -1112,10 +1141,12 @@ def reset_1802():
 
 
 if run_gui0 or run_gui1 or run_gui2:
-  if sys.version_info[0] <= 2:
+  if py2:
     import Tkinter as tk
     from Tkinter import *
     # from Tkinter import ttk
+    # Note: The following hasn't been tested in Python2
+    from ttk import *
   else:
     import tkinter as tk
     from tkinter import *
@@ -1288,8 +1319,8 @@ if run_gui0 or run_gui1 or run_gui2:
       # Create a text area
       text_area = Text (mainframe) #, width=80, height=30)
       text_area.grid_columnconfigure ( 0, weight=1 )
-      text_area.pack()
-      #text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
+      #text_area.pack()
+      text_area.grid ( column=1, row=2, columnspan=next_col-(graphics_cols-1), sticky=(N,W,E,S) )
       #text_area['state'] = "disabled"
 
       # Create a graphics area

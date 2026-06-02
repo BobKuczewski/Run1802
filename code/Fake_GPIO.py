@@ -18,7 +18,7 @@ class fake_1802_sim:
   def __init__ (self):
     self.clock_val = 0
     self.clock_count = 0
-    self.memory = None
+    self.memory = None  # This is typically assigned to the "memory" of the calling program
     self.end_of_loaded_code = 0
     self.pin_dict = {"NMRD":1,"NMWR":1}
     self.output_data = [ 10,10, 50,10, 50,50, 10,50, 10,10 ] # Continuous Square
