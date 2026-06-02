@@ -1030,33 +1030,49 @@ def mem ():
       print ( "M[" + hex(i) + "] = " + hex(memory[i]) + " = " + str(memory[i]) )
   print ( "-------------------" )
 
+def draw_pin_canvas():
+  if PinCanvas != None:
+    PinCanvas.draw()
+
+def set_pin_canvas ( pc ):
+  global PinCanvas
+  PinCanvas = pc
+
+PinCanvas = None
+
 
 def gui_reset(*args):
   print ( "Resetting the 1802" )
   reset_1802()
+  draw_pin_canvas()
 
 def gui_half_clock(*args):
   print ( "Running 1 half clock" )
   run ( 1 )
+  draw_pin_canvas()
 
 def gui_full_clock(*args):
   print ( "Running 1 full clock" )
   run ( 2 )
+  draw_pin_canvas()
 
 def gui_8_clocks(*args):
   print ( "Running 8 full clocks" )
   run ( 2*8 )
+  draw_pin_canvas()
 
 def gui_N_half_clocks(*args):
   n = int(gui_num_clocks.get())
   print ( "Running " + str(n) + " half clocks" )
   run ( n )
+  draw_pin_canvas()
 
 def gui_clear(*args):
   global text_area
   global graphics_so_far
   text_area.delete ( 1.0, tk.END )
   graphics_so_far = []
+  draw_pin_canvas()
 
 def gui_debug(*args):
   print ( "***********************************************************" )
@@ -1065,6 +1081,7 @@ def gui_debug(*args):
   print ( "*                                                         *" )
   print ( "***********************************************************" )
   __import__('code').interact(local={k: v for ns in (globals(), locals()) for k, v in ns.items()})
+  draw_pin_canvas()
 
 def gui_dump_changed (*args):
   global dump_pins_var
@@ -1166,13 +1183,22 @@ class ResizingCanvas ( Canvas ):
 
 class Pi1802Canvas ( ResizingCanvas ):
   def draw(self):
-    print ( "Redrawing at: " + str(self.win_w) + "x" + str(self.win_h) )
+    global clock, nclear, qout, ndmai, nint, nef1, tpa, tpb, sc0, nmrd, nmwr, n2
+    global ma0, ma1, ma2, ma3, ma4, ma5, ma6, ma7, d0, d1, d2, d3, d4, d5, d6, d7
+
+    # print ( "Redrawing at: " + str(self.win_w) + "x" + str(self.win_h) )
+
     pin_names = [ 'CLK',  '/WAIT', '/CLR', 'Q',    'SC1',  'SC0',  '/MRD',  'D7',    'D6',    'D5',
                   'D4',   'D3',    'D2',   'D1',   'D0',   'Vcc',  'N2',    'N1',    'N0',    'Vss',
                   '/EF4', '/EF3',  '/EF2', '/EF1', 'MA0',  'MA1',  'MA2',   'MA3',   'MA4',   'MA5',
                   'MA6',  'MA7',   'TPB',  'TPA',  '/MWR', '/INT', '/DMAO', '/DMAI', '/XTAL', 'VDD' ]
     pin_modes = [ 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1,
                   1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1 ]
+    pin_states = [ clock,  None,   nclear, qout,    None,   sc0,    nmrd,     d7,      d6,      d5,
+                   d4,     d3,     d2,      d1,     d0,     None,   n2,       None,   None,     None,
+                   None,   None,   None,    nef1,   ma0,    ma1,    ma2,      ma3,    ma4,      ma5,
+                   ma6,    ma7,    tpb,     tpa,    nmwr,   nint,   None,     ndmai,  None,     None ]
+
     pin_mode_colors = [ '#5555aa', '#55ff55', 'pink' ]
     w = self.win_w
     h = self.win_h
@@ -1186,13 +1212,25 @@ class Pi1802Canvas ( ResizingCanvas ):
     self.delete('all')
     for i in range(20):
       y = y1802+(dy/2)+(i*2*dy)
-      # Draw the lines through the pins (drawm all the way through the chip)
+      # Draw the lines through the pins (draw all the way through the chip)
       self.create_line ( x1802-(3*wl/2), y+(dy/2), x1802+(3*wl)+(wl/2), y+(dy/2), fill='black', tag='line' )
-      # Draw the pins (drawm as on rectangle all the way through the chip)
+      # Draw the pins (draw as on rectangle all the way through the chip)
       self.create_rectangle( x1802-dx, y, x1802+w1802+dx, y+dy, fill='white', tag='pin')
       # Draw the status indicators for the current voltage on each pin
-      self.create_oval( (x1802-dx)-wl, y-(dy/4), (x1802+dx)-wl, y+(5*dy/4), fill='yellow', tag='pin')
-      self.create_oval( (x1802+w1802+wl-dx), y-(dy/4), (x1802+w1802+wl+dx), y+(5*dy/4), fill='yellow', tag='pin')
+      fill = 'gray'
+      if pin_states[i] != None:
+        if pin_states[i].get_val_safe():
+          fill = 'yellow'
+        else:
+          fill = 'black'
+      self.create_oval( (x1802-dx)-wl, y-(dy/4), (x1802+dx)-wl, y+(5*dy/4), fill=fill, tag='pin')
+      fill = 'gray'
+      if pin_states[39-i] != None:
+        if pin_states[39-i].get_val_safe():
+          fill = 'yellow'
+        else:
+          fill = 'black'
+      self.create_oval( (x1802+w1802+wl-dx), y-(dy/4), (x1802+w1802+wl+dx), y+(5*dy/4), fill=fill, tag='pin')
       # Draw the buttons that control inputs to the pins
       c = pin_mode_colors[pin_modes[i]]
       self.create_rectangle( x1802-(3*wl/2)-dx, y-(dy/3), dx+dx+x1802-(3*wl/2), y+(4*dy/3), fill=c, tag='pin')
@@ -1371,6 +1409,7 @@ if run_gui0 or run_gui1 or run_gui2:
 
     w3 = Pi1802Canvas(f3, width=640, height=560, bg='gray')
     w3.pack(fill=BOTH, expand=True)
+    set_pin_canvas ( w3 )
 
     f1.pack(side=TOP, fill=BOTH, expand=False)
     f2.pack(side=TOP, fill=BOTH, expand=False)
@@ -1379,6 +1418,7 @@ if run_gui0 or run_gui1 or run_gui2:
 
   # Reset the 1802 with whatever logging has been put in place
   reset_1802()
+  draw_pin_canvas()
 
   # gui_num_clocks_entry.focus()
   # root.bind
@@ -1394,6 +1434,7 @@ else:
   else:
     print ( "Running " + str(num_clocks) + " clocks" )
   run ( num_clocks )
+  draw_pin_canvas()
 
 
 if dump_mem:
